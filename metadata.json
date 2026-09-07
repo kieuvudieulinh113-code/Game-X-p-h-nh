@@ -1,0 +1,10 @@
+{
+  "name": "Chinh phục mảnh ghép",
+  "description": "Ứng dụng trò chơi học tập môn Tin học lớp 3 và 4 kết hợp vận động nhận diện cơ thể, trả lời câu hỏi và ghép tranh ghép 9 mảnh 3x3 xáo trộn ngẫu nhiên.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
