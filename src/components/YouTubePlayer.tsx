@@ -13,9 +13,12 @@ import {
   ExternalLink,
   ChevronDown,
   ChevronUp,
-  RefreshCw,
   Sparkles,
   Radio,
+  Video,
+  VideoOff,
+  ListMusic,
+  Check,
 } from 'lucide-react';
 
 declare global {
@@ -43,13 +46,15 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const playerRef = useRef<any>(null);
   const [isApiReady, setIsApiReady] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(!compactMode);
+  // Show/hide song selection panel or video preview (does NOT unmount iframe)
+  const [showPresetsPanel, setShowPresetsPanel] = useState(false);
+  const [showVideoPreview, setShowVideoPreview] = useState(false);
   const [localMute, setLocalMute] = useState(false);
   const [playbackState, setPlaybackState] = useState<'playing' | 'paused' | 'buffering' | 'idle'>('idle');
 
   const validVideoId = extractYouTubeVideoId(config.url) || config.videoId || '7zp1TbLFPp8';
 
-  // Load YouTube IFrame API once
+  // Load YouTube IFrame API once globally
   useEffect(() => {
     if (typeof window === 'undefined') return;
 
@@ -222,6 +227,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
         startOffset: preset.startOffset,
       });
     }
+    setShowPresetsPanel(false);
   };
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
@@ -230,182 +236,251 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
   )}&controls=1&rel=0&playsinline=1&modestbranding=1&loop=1&playlist=${validVideoId}&start=${config.startOffset || 0}`;
 
   return (
-    <div
-      className={`rounded-2xl border transition-all duration-300 shadow-xl overflow-hidden ${
-        playbackState === 'playing'
-          ? 'bg-slate-950/95 border-red-500/50 shadow-[0_0_25px_rgba(239,68,68,0.25)]'
-          : 'bg-slate-950/90 border-slate-800'
-      }`}
-    >
-      {/* Header bar / Mini player bar */}
-      <div className="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3 bg-gradient-to-r from-red-950/40 via-slate-900/60 to-slate-950/90">
-        <div className="flex items-center gap-3 min-w-0">
-          {/* YouTube Logo Badge & Equalizer */}
-          <div className="relative w-10 h-10 rounded-xl bg-red-600 flex items-center justify-center text-white flex-shrink-0 shadow-[0_0_15px_rgba(239,68,68,0.4)]">
-            <Music className="w-5 h-5 fill-white" />
-            {playbackState === 'playing' && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-              </span>
-            )}
-          </div>
-
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-mono uppercase font-black tracking-wider px-2 py-0.5 rounded-md bg-red-500/20 text-red-400 border border-red-500/30 flex items-center gap-1">
-                <Radio className="w-3 h-3" />
-                NHẠC NỀN YOUTUBE
-              </span>
-              {playbackState === 'playing' ? (
-                <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1 animate-pulse">
-                  ● Đang phát
-                </span>
-              ) : (
-                <span className="text-[10px] font-bold text-slate-400">
-                  ○ Tạm dừng
-                </span>
-              )}
-            </div>
-
-            <h4 className="text-xs sm:text-sm font-black text-slate-100 truncate max-w-[200px] sm:max-w-xs md:max-w-md mt-0.5" title={config.title}>
-              {config.title || 'Nhạc Nền YouTube Cho Học Sinh Vận Động'}
-            </h4>
-          </div>
-        </div>
-
-        {/* Live Controls: Play/Pause, Volume, Presets */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Play/Pause Button */}
-          <button
-            onClick={handleManualToggle}
-            className={`px-3 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-md cursor-pointer ${
-              playbackState === 'playing'
-                ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
-                : 'bg-red-600 hover:bg-red-500 text-white font-black'
-            }`}
-            title={playbackState === 'playing' ? 'Tạm dừng nhạc' : 'Phát nhạc ngay'}
-          >
-            {playbackState === 'playing' ? (
-              <>
-                <Pause className="w-3.5 h-3.5 fill-current" />
-                <span>Tạm dừng</span>
-              </>
-            ) : (
-              <>
-                <Play className="w-3.5 h-3.5 fill-current" />
-                <span>Phát nhạc</span>
-              </>
-            )}
-          </button>
-
-          {/* Volume Control */}
-          <div className="hidden sm:flex items-center gap-2 bg-slate-900/80 px-2.5 py-1.5 rounded-xl border border-slate-700">
-            <button
-              onClick={handleMuteToggle}
-              className="text-slate-400 hover:text-white transition-colors"
-              title={localMute ? 'Bật âm lượng' : 'Tắt tiếng'}
-            >
-              {localMute || config.volume === 0 ? (
-                <VolumeX className="w-4 h-4 text-rose-400" />
-              ) : (
-                <Volume2 className="w-4 h-4 text-cyan-400" />
-              )}
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={5}
-              value={localMute ? 0 : config.volume}
-              onChange={(e) => {
-                if (localMute) setLocalMute(false);
-                handleVolumeChange(Number(e.target.value));
-              }}
-              className="w-16 accent-red-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
-              title={`Âm lượng: ${config.volume}%`}
-            />
-            <span className="text-[10px] font-mono font-bold text-slate-300 w-7">
-              {localMute ? '0%' : `${config.volume}%`}
-            </span>
-          </div>
-
-          {/* Expand/Collapse preview */}
-          <button
-            onClick={() => setIsExpanded((prev) => !prev)}
-            className="p-1.5 rounded-xl bg-slate-900/80 hover:bg-slate-800 text-slate-300 border border-slate-700 transition-colors"
-            title={isExpanded ? 'Thu gọn video' : 'Xem video YouTube'}
-          >
-            {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
-        </div>
+    <div className="relative">
+      {/* 
+        CRITICAL FIX FOR USER REQUIREMENT:
+        Keep the YouTube iframe permanently mounted in an invisible, offscreen container.
+        This guarantees uninterrupted audio playback at all times, even when the user collapses
+        the video or panel. It never consumes screen space or disconnects audio.
+      */}
+      <div
+        className="fixed -left-[9999px] -top-[9999px] w-[200px] h-[200px] pointer-events-none opacity-0 overflow-hidden"
+        aria-hidden="true"
+      >
+        <iframe
+          ref={iframeRef}
+          id="cpmg-yt-embed-player"
+          src={embedUrl}
+          title="YouTube Background Audio"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          className="w-full h-full border-0"
+        />
       </div>
 
-      {/* Expandable Section: YouTube iframe + Quick Presets */}
-      {isExpanded && (
-        <div className="p-3 sm:p-4 border-t border-slate-800 bg-slate-950/70 space-y-3">
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-center">
-            {/* Embedded YouTube Iframe Preview */}
-            <div className="md:col-span-5 relative aspect-video rounded-xl overflow-hidden bg-black border border-slate-800 shadow-inner">
-              <iframe
-                ref={iframeRef}
-                id="cpmg-yt-embed-player"
-                src={embedUrl}
-                title="YouTube Background Music"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="w-full h-full border-0"
+      {/* ULTRA-COMPACT AUDIO BAR (Pure Audio, Zero Screen Clutter) */}
+      <div
+        className={`rounded-xl sm:rounded-2xl border transition-all duration-300 shadow-md ${
+          playbackState === 'playing'
+            ? 'bg-slate-950/95 border-red-500/40 shadow-[0_0_18px_rgba(239,68,68,0.2)]'
+            : 'bg-slate-950/90 border-slate-800'
+        }`}
+      >
+        <div className="px-3 py-2 flex flex-wrap items-center justify-between gap-2.5">
+          {/* Left: Song Title + Dynamic Equalizer Wave */}
+          <div className="flex items-center gap-2.5 min-w-0 flex-1">
+            {/* Pulsing Audio Icon */}
+            <div className="relative w-8 h-8 rounded-lg bg-red-600/90 flex items-center justify-center text-white flex-shrink-0 shadow-sm">
+              <Music className={`w-4 h-4 fill-white ${playbackState === 'playing' ? 'animate-pulse' : ''}`} />
+            </div>
+
+            {/* Dynamic Equalizer Bars */}
+            <div className="flex items-end gap-0.5 h-4 px-1 py-0.5 bg-slate-900/90 rounded border border-slate-800 flex-shrink-0">
+              <span
+                className={`w-1 rounded-full bg-red-500 transition-all duration-150 ${
+                  playbackState === 'playing' ? 'h-3.5 animate-pulse' : 'h-1'
+                }`}
+              />
+              <span
+                className={`w-1 rounded-full bg-amber-400 transition-all duration-150 ${
+                  playbackState === 'playing' ? 'h-2 animate-pulse' : 'h-1.5'
+                }`}
+              />
+              <span
+                className={`w-1 rounded-full bg-cyan-400 transition-all duration-150 ${
+                  playbackState === 'playing' ? 'h-3.5 animate-pulse' : 'h-1'
+                }`}
+              />
+              <span
+                className={`w-1 rounded-full bg-emerald-400 transition-all duration-150 ${
+                  playbackState === 'playing' ? 'h-2.5 animate-pulse' : 'h-1'
+                }`}
               />
             </div>
 
-            {/* Quick Song Selector Presets */}
-            <div className="md:col-span-7 space-y-2">
-              <div className="flex items-center justify-between text-xs font-bold text-slate-400">
-                <span className="flex items-center gap-1 text-slate-300">
-                  <Sparkles className="w-3.5 h-3.5 text-red-400" />
-                  Gợi ý bài hát vận động sôi động:
+            {/* Song title info */}
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[9px] font-mono uppercase font-black px-1.5 py-0.2 rounded bg-red-500/20 text-red-400 border border-red-500/30">
+                  NHẠC YOUTUBE
                 </span>
-                <a
-                  href={`https://www.youtube.com/watch?v=${validVideoId}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="text-red-400 hover:text-red-300 flex items-center gap-1 text-[11px]"
-                >
-                  <span>Mở trên YouTube</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
+                {playbackState === 'playing' ? (
+                  <span className="text-[10px] font-bold text-emerald-400 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
+                    Đang phát
+                  </span>
+                ) : (
+                  <span className="text-[10px] font-bold text-slate-400">
+                    Tạm dừng
+                  </span>
+                )}
               </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
-                {YOUTUBE_PRESETS.map((preset) => (
-                  <button
-                    key={preset.id}
-                    onClick={() => handlePresetSelect(preset)}
-                    className={`p-2 rounded-xl text-left border transition-all text-xs flex items-center gap-2 cursor-pointer ${
-                      validVideoId === preset.videoId
-                        ? 'bg-red-950/60 border-red-500 text-white shadow-sm ring-1 ring-red-400'
-                        : 'bg-slate-900/60 border-slate-800 text-slate-300 hover:bg-slate-800 hover:border-slate-700'
-                    }`}
-                  >
-                    <span className="w-2 h-2 rounded-full bg-red-500 flex-shrink-0" />
-                    <div className="min-w-0 flex-1">
-                      <p className="font-bold truncate">{preset.title}</p>
-                      <span className="text-[10px] text-slate-400">{preset.category}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-
-              {/* Notice that synthetic ticks/ting ting are disabled */}
-              {config.muteSynthAudio && (
-                <p className="text-[11px] text-emerald-400/90 font-medium flex items-center gap-1 pt-1">
-                  ✓ Đã tắt tiếng "ting ting" và tiếng "bass" điện tử để bạn thưởng thức trọn vẹn nhạc nền YouTube!
-                </p>
-              )}
+              <p className="text-xs font-extrabold text-slate-200 truncate max-w-[180px] sm:max-w-xs md:max-w-md" title={config.title}>
+                {config.title || 'Nhạc Nền Sôi Động YouTube'}
+              </p>
             </div>
           </div>
+
+          {/* Right: Audio Controls (Play/Pause, Song Selector, Volume) */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
+            {/* Play/Pause Button */}
+            <button
+              onClick={handleManualToggle}
+              className={`px-2.5 py-1.5 rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm cursor-pointer ${
+                playbackState === 'playing'
+                  ? 'bg-amber-500 hover:bg-amber-400 text-slate-950 font-black'
+                  : 'bg-red-600 hover:bg-red-500 text-white font-black'
+              }`}
+              title={playbackState === 'playing' ? 'Tạm dừng nhạc' : 'Bấm phát nhạc'}
+            >
+              {playbackState === 'playing' ? (
+                <>
+                  <Pause className="w-3 h-3 fill-current" />
+                  <span className="hidden sm:inline">Tạm dừng</span>
+                </>
+              ) : (
+                <>
+                  <Play className="w-3 h-3 fill-current" />
+                  <span className="hidden sm:inline">Phát nhạc</span>
+                </>
+              )}
+            </button>
+
+            {/* Quick Song Picker Button */}
+            <button
+              onClick={() => {
+                setShowPresetsPanel((prev) => !prev);
+                if (showVideoPreview) setShowVideoPreview(false);
+              }}
+              className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1.5 cursor-pointer ${
+                showPresetsPanel
+                  ? 'bg-red-900/60 border-red-500 text-white'
+                  : 'bg-slate-900/80 hover:bg-slate-800 text-slate-300 border-slate-700'
+              }`}
+              title="Chọn bài hát khác"
+            >
+              <ListMusic className="w-3.5 h-3.5 text-red-400" />
+              <span className="hidden md:inline">Đổi bài</span>
+              <ChevronDown className={`w-3 h-3 transition-transform ${showPresetsPanel ? 'rotate-180' : ''}`} />
+            </button>
+
+            {/* Volume Control */}
+            <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 py-1 rounded-lg border border-slate-800">
+              <button
+                onClick={handleMuteToggle}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+                title={localMute ? 'Bật âm lượng' : 'Tắt tiếng'}
+              >
+                {localMute || config.volume === 0 ? (
+                  <VolumeX className="w-3.5 h-3.5 text-rose-400" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5 text-cyan-400" />
+                )}
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={100}
+                step={5}
+                value={localMute ? 0 : config.volume}
+                onChange={(e) => {
+                  if (localMute) setLocalMute(false);
+                  handleVolumeChange(Number(e.target.value));
+                }}
+                className="w-14 accent-red-500 h-1.5 bg-slate-700 rounded-lg cursor-pointer"
+                title={`Âm lượng: ${config.volume}%`}
+              />
+              <span className="text-[10px] font-mono font-bold text-slate-300 w-6 text-right hidden sm:inline">
+                {localMute ? '0%' : `${config.volume}%`}
+              </span>
+            </div>
+
+            {/* Optional Video Toggle (User requested pure audio, but can view if wanted) */}
+            <button
+              onClick={() => {
+                setShowVideoPreview((prev) => !prev);
+                if (showPresetsPanel) setShowPresetsPanel(false);
+              }}
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                showVideoPreview
+                  ? 'bg-red-950 border-red-500 text-red-300'
+                  : 'bg-slate-900/80 hover:bg-slate-800 text-slate-400 border-slate-800'
+              }`}
+              title={showVideoPreview ? 'Ẩn video (chỉ nghe âm thanh)' : 'Xem video YouTube'}
+            >
+              {showVideoPreview ? <VideoOff className="w-3.5 h-3.5" /> : <Video className="w-3.5 h-3.5" />}
+            </button>
+          </div>
         </div>
-      )}
+
+        {/* Dropped Quick Song Presets Menu (compact dropdown that doesn't eat screen space) */}
+        {showPresetsPanel && (
+          <div className="p-3 border-t border-slate-800 bg-slate-950/95 space-y-2.5 animate-fadeIn">
+            <div className="flex items-center justify-between text-xs font-bold text-slate-300">
+              <span className="flex items-center gap-1.5 text-red-400">
+                <Sparkles className="w-3.5 h-3.5" />
+                Chọn bài hát vận động vui nhộn cho học sinh:
+              </span>
+              <a
+                href={`https://www.youtube.com/watch?v=${validVideoId}`}
+                target="_blank"
+                rel="noreferrer"
+                className="text-red-400 hover:text-red-300 flex items-center gap-1 text-[11px]"
+              >
+                <span>Xem trên YouTube</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              {YOUTUBE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  onClick={() => handlePresetSelect(preset)}
+                  className={`p-2.5 rounded-xl text-left border transition-all text-xs flex items-center gap-2.5 cursor-pointer ${
+                    validVideoId === preset.videoId
+                      ? 'bg-red-950/80 border-red-500 text-white ring-1 ring-red-400'
+                      : 'bg-slate-900/70 border-slate-800 text-slate-300 hover:bg-slate-850 hover:border-slate-700'
+                  }`}
+                >
+                  <div className="w-6 h-6 rounded-lg bg-red-600/20 text-red-400 flex items-center justify-center flex-shrink-0">
+                    <Music className="w-3.5 h-3.5" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-bold truncate text-slate-100">{preset.title}</p>
+                    <p className="text-[10px] text-slate-400 truncate">{preset.category} • {preset.description}</p>
+                  </div>
+                  {validVideoId === preset.videoId && (
+                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0" />
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Optional Video Visualizer (only if user explicitly clicks to view video) */}
+        {showVideoPreview && (
+          <div className="p-3 border-t border-slate-800 bg-slate-950/95 space-y-2">
+            <div className="flex items-center justify-between text-xs text-slate-400">
+              <span className="font-bold text-slate-300">Khung hình video YouTube:</span>
+              <button
+                onClick={() => setShowVideoPreview(false)}
+                className="text-[11px] text-red-400 hover:underline cursor-pointer"
+              >
+                Đóng video để tiết kiệm diện tích sàn đấu
+              </button>
+            </div>
+            <div className="max-w-md mx-auto aspect-video rounded-xl overflow-hidden bg-black border border-slate-800">
+              {/* Note: This is an extra visual-only clone if needed, but our primary player is always running uninterrupted in the persistent container */}
+              <iframe
+                src={`https://www.youtube-nocookie.com/embed/${validVideoId}?autoplay=0&controls=1&rel=0`}
+                title="YouTube Preview"
+                className="w-full h-full border-0"
+              />
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

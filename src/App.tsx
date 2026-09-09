@@ -31,6 +31,7 @@ import {
   ChevronRight,
   BookOpen,
   Timer,
+  Zap,
 } from 'lucide-react';
 
 const INITIAL_TEAMS: [Team, Team] = [
@@ -87,6 +88,11 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 20;
   });
 
+  const [motionDuration, setMotionDuration] = useState<number>(() => {
+    const saved = localStorage.getItem('cpmg_motion_duration');
+    return saved ? parseInt(saved, 10) : 10;
+  });
+
   // Game Loop States
   const [phase, setPhase] = useState<GamePhase>('ready');
   const [currentRound, setCurrentRound] = useState(1);
@@ -139,6 +145,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('cpmg_answer_time', String(answerTimeLimit));
   }, [answerTimeLimit]);
+
+  useEffect(() => {
+    localStorage.setItem('cpmg_motion_duration', String(motionDuration));
+  }, [motionDuration]);
 
   // Initialize or re-slice puzzle pieces when mystery image changes or on start
   const initPuzzlePieces = useCallback(async (imageSrc: string) => {
@@ -414,6 +424,60 @@ export default function App() {
               </button>
             </div>
 
+            {/* Motion Countdown Quick Settings Card (Cài đặt giây vận động không cố định 10s) */}
+            <div className="bg-slate-950/90 border border-cyan-500/30 rounded-2xl p-4 max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 text-left shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-cyan-950 border border-cyan-500/50 text-cyan-300 flex items-center justify-center font-bold flex-shrink-0 shadow-[0_0_12px_rgba(6,182,212,0.3)] font-mono">
+                  <Zap className="w-5 h-5 text-cyan-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-cyan-400 uppercase tracking-wider">
+                      THỜI GIAN VẬN ĐỘNG TRƯỚC CAMERA:
+                    </span>
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-300 border border-cyan-600 font-black">
+                      {motionDuration} GIÂY
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Số giây đếm ngược để học sinh thi đua vận động (tùy chỉnh 5s, 10s, 15s, 20s, 30s...).
+                  </p>
+                  {/* Quick Select Pill Buttons */}
+                  <div className="flex items-center gap-1.5 mt-2">
+                    <span className="text-[10px] text-slate-400 font-mono">Chọn nhanh:</span>
+                    {[5, 10, 15, 20, 30].map((sec) => (
+                      <button
+                        key={sec}
+                        onClick={() => {
+                          setMotionDuration(sec);
+                          soundManager.playClick();
+                        }}
+                        className={`px-2 py-0.5 rounded-lg text-[11px] font-mono font-bold transition-all ${
+                          motionDuration === sec
+                            ? 'bg-cyan-500 text-slate-950 font-black shadow-sm'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+                        }`}
+                      >
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                id="btn-config-motion-time-ready"
+                onClick={() => {
+                  setTeacherPanelInitialTab('settings');
+                  setIsTeacherPanelOpen(true);
+                }}
+                className="px-3.5 py-2 bg-gradient-to-r from-cyan-600 to-teal-600 hover:from-cyan-500 hover:to-teal-500 text-white border border-cyan-400/40 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
+              >
+                <Timer className="w-4 h-4 text-cyan-200" />
+                <span>Tùy chỉnh số giây</span>
+              </button>
+            </div>
+
             {/* Answer Countdown & Sound Quick Settings Card */}
             <div className="bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-4 max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 text-left shadow-lg">
               <div className="flex items-center gap-3">
@@ -484,13 +548,13 @@ export default function App() {
                 className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-lg shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center gap-3 mx-auto transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
               >
                 <Play className="w-6 h-6 fill-white" />
-                <span>BƯỚC VÀO VẬN ĐỘNG 10 GIÂY</span>
+                <span>BƯỚC VÀO VẬN ĐỘNG {motionDuration} GIÂY</span>
               </button>
             </div>
           </div>
         )}
 
-        {/* PHASE: MOTION - 10s Webcam Joint Movement Evaluation */}
+        {/* PHASE: MOTION - Webcam Joint Movement Evaluation */}
         {phase === 'motion' && (
           <div className="space-y-3">
             {motionRetryNotice && (
@@ -503,10 +567,12 @@ export default function App() {
             <MotionPhase
               teams={teams}
               currentRound={currentRound}
+              motionDuration={motionDuration}
               onMotionComplete={handleMotionComplete}
               onRetryMotion={handleRetryMotion}
               retryNotice={motionRetryNotice}
               onClearRetryNotice={() => setMotionRetryNotice(null)}
+              onUpdateMotionDuration={(sec) => setMotionDuration(sec)}
             />
           </div>
         )}
@@ -616,6 +682,7 @@ export default function App() {
           mysteryImages={mysteryImages}
           currentImageId={currentImageId}
           answerTimeLimit={answerTimeLimit}
+          motionDuration={motionDuration}
           onSelectQuestionBank={handleSelectQuestionBank}
           onSaveQuestionBank={handleSaveQuestionBank}
           onDeleteQuestionBank={handleDeleteQuestionBank}
@@ -648,6 +715,7 @@ export default function App() {
             }
           }}
           onUpdateAnswerTimeLimit={(sec) => setAnswerTimeLimit(sec)}
+          onUpdateMotionDuration={(sec) => setMotionDuration(sec)}
           initialTab={teacherPanelInitialTab}
           onClose={() => setIsTeacherPanelOpen(false)}
         />

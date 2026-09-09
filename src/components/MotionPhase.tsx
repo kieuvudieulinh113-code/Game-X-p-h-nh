@@ -29,15 +29,18 @@ import {
   Volume2,
   VolumeX,
   Music,
+  Timer,
 } from 'lucide-react';
 
 interface MotionPhaseProps {
   teams: [Team, Team];
   currentRound: number;
+  motionDuration?: number;
   onMotionComplete: (winner: 'teamA' | 'teamB', scoreA: number, scoreB: number) => void;
   onRetryMotion: (reason: string) => void;
   retryNotice?: string | null;
   onClearRetryNotice?: () => void;
+  onUpdateMotionDuration?: (seconds: number) => void;
 }
 
 const defaultZones: BodyZonesMotion = {
@@ -52,10 +55,12 @@ const defaultZones: BodyZonesMotion = {
 export const MotionPhase: React.FC<MotionPhaseProps> = ({
   teams,
   currentRound,
+  motionDuration = 10,
   onMotionComplete,
   onRetryMotion,
   retryNotice: externalRetryNotice,
   onClearRetryNotice,
+  onUpdateMotionDuration,
 }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -482,12 +487,12 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
     };
   }, [isRunning]);
 
-  // Finish evaluation when 10 seconds expire
+  // Finish evaluation when motion seconds expire
   const handleFinishCountdown = useCallback(() => {
     setIsRunning(false);
     soundManager.playCorrect();
 
-    const minValidFrames = 10;
+    const minValidFrames = Math.max(5, Math.min(10, Math.floor(motionDuration * 0.8)));
     const isAValidTotal = validFramesCountA.current >= minValidFrames || isManualMode;
     const isBValidTotal = validFramesCountB.current >= minValidFrames || isManualMode;
 
@@ -502,9 +507,10 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
       return;
     }
 
-    // Case 2: Insufficient motion (both students moved too little, e.g. < 12 points)
-    if (finalA < 12 && finalB < 12 && !isManualMode) {
-      const msg = `Hai bạn vận động chưa đủ năng lượng (${finalA}đ - ${finalB}đ, yêu cầu tối thiểu 12đ). Hãy lùi lại, lắc bụng/eo, gật lắc đầu, vung tay và nhún nhảy toàn thân nhé!`;
+    // Case 2: Insufficient motion scaled by duration
+    const minRequiredEnergy = Math.max(6, Math.floor(motionDuration * 1.2));
+    if (finalA < minRequiredEnergy && finalB < minRequiredEnergy && !isManualMode) {
+      const msg = `Hai bạn vận động chưa đủ năng lượng (${finalA}đ - ${finalB}đ, yêu cầu tối thiểu ${minRequiredEnergy}đ). Hãy lùi lại, lắc bụng/eo, gật lắc đầu, vung tay và nhún nhảy toàn thân nhé!`;
       setLocalRetryNotice(msg);
       onRetryMotion(msg);
       return;
@@ -512,7 +518,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
 
     // Case 3: Close tie
     if (finalA === finalB || Math.abs(finalA - finalB) <= 2) {
-      const msg = `Kết quả hòa sát nút (${finalA} - ${finalB})! Cả 2 bạn đều rất hăng hái, mời 2 bạn vận động thêm một lượt 10 giây để phân thắng bại!`;
+      const msg = `Kết quả hòa sát nút (${finalA} - ${finalB})! Cả 2 bạn đều rất hăng hái, mời 2 bạn vận động thêm một lượt ${motionDuration} giây để phân thắng bại!`;
       setLocalRetryNotice(msg);
       onRetryMotion(msg);
       return;
@@ -524,7 +530,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
 
     const winner = finalA > finalB ? 'teamA' : 'teamB';
     onMotionComplete(winner, finalA, finalB);
-  }, [isManualMode, onMotionComplete, onRetryMotion, onClearRetryNotice]);
+  }, [isManualMode, motionDuration, onMotionComplete, onRetryMotion, onClearRetryNotice]);
 
   // Universal reset & start function with 3-2-1 sequence and guaranteed timer countdown
   const launchRoundCountdown = useCallback(() => {
@@ -691,8 +697,39 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
           </p>
         </div>
 
-        {/* Header Controls: Motion Sound Toggle + YouTube Music Toggle + Compact Tech Timer */}
+        {/* Header Controls: Motion Duration Selector + YouTube Music Toggle + Motion Sound Toggle + Compact Tech Timer */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          {/* Quick Motion Duration Picker on Arena */}
+          <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1.5 rounded-xl sm:rounded-2xl border border-slate-700">
+            <Timer className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-mono font-bold text-slate-300 hidden sm:inline">
+              Thời gian:
+            </span>
+            <span className="text-xs font-mono font-black text-cyan-300">
+              {motionDuration}s
+            </span>
+            <div className="flex items-center gap-0.5 ml-1">
+              {[5, 10, 15, 20, 30].map((sec) => (
+                <button
+                  key={sec}
+                  onClick={() => {
+                    if (onUpdateMotionDuration) onUpdateMotionDuration(sec);
+                    soundManager.playClick();
+                  }}
+                  disabled={isRunning}
+                  className={`px-1.5 py-0.5 rounded text-[10px] font-mono font-bold transition-all ${
+                    motionDuration === sec
+                      ? 'bg-cyan-500 text-slate-950 font-black shadow-sm'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  } ${isRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  title={`Đổi thời gian vận động thành ${sec} giây`}
+                >
+                  {sec}s
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* YouTube Background Music Toggle */}
           <button
             onClick={toggleYouTubeMusic}
@@ -744,7 +781,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
           <TechCountdown
             key={`header-timer-${attemptId}`}
             resetKey={attemptId}
-            totalSeconds={10}
+            totalSeconds={motionDuration}
             isRunning={isRunning}
             onComplete={handleFinishCountdown}
             variant="hud-compact"
@@ -1080,7 +1117,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
                   className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-base sm:text-lg shadow-[0_0_30px_rgba(6,182,212,0.6)] flex items-center gap-2.5 transform hover:scale-105 transition-all border border-cyan-300/50 cursor-pointer"
                 >
                   <Play className="w-5 h-5 fill-white" />
-                  <span>BẮT ĐẦU VẬN ĐỘNG LẠI (10 GIÂY)</span>
+                  <span>BẮT ĐẦU VẬN ĐỘNG LẠI ({motionDuration} GIÂY)</span>
                 </button>
                 <button
                   onClick={() => setIsManualMode(true)}
@@ -1103,7 +1140,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
                 Sẵn sàng cho Lượt {currentRound}!
               </h3>
               <p className="text-sm text-cyan-200/80 max-w-md mb-6">
-                Hai bạn học sinh đứng đối diện camera (cách 1.5 - 2m). AI sẽ nhận diện toàn thân: lắc bụng, gật đầu, vung tay và nhún chân!
+                Hai bạn học sinh đứng đối diện camera (cách 1.5 - 2m). AI sẽ nhận diện toàn thân: lắc bụng, gật đầu, vung tay và nhún chân trong {motionDuration} giây!
               </p>
               <div className="flex flex-wrap items-center justify-center gap-3">
                 <button
@@ -1112,7 +1149,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
                   className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-lg shadow-[0_0_25px_rgba(6,182,212,0.5)] flex items-center gap-3 transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
                 >
                   <Play className="w-6 h-6 fill-white" />
-                  BẮT ĐẦU VẬN ĐỘNG (10 GIÂY)
+                  BẮT ĐẦU VẬN ĐỘNG ({motionDuration} GIÂY)
                 </button>
                 <button
                   onClick={handleSimulateMotion}
@@ -1157,7 +1194,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
                 className="px-4 py-2 rounded-xl border border-slate-700 bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-sm flex items-center gap-2 transition-colors cursor-pointer"
               >
                 <RotateCcw className="w-4 h-4 text-cyan-400" />
-                Vận động lại 10s
+                Vận động lại {motionDuration}s
               </button>
             </>
           )}

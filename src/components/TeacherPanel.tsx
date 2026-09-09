@@ -51,6 +51,7 @@ interface TeacherPanelProps {
   mysteryImages: MysteryImage[];
   currentImageId: string;
   answerTimeLimit: number;
+  motionDuration?: number;
   initialTab?: 'questions' | 'images' | 'settings';
   onSelectQuestionBank: (bankId: string) => void;
   onSaveQuestionBank: (bank: QuestionBank) => void;
@@ -59,6 +60,7 @@ interface TeacherPanelProps {
   onSaveMysteryImage: (image: MysteryImage) => void;
   onDeleteMysteryImage: (imageId: string) => void;
   onUpdateAnswerTimeLimit: (seconds: number) => void;
+  onUpdateMotionDuration?: (seconds: number) => void;
   onClose: () => void;
 }
 
@@ -68,6 +70,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   mysteryImages,
   currentImageId,
   answerTimeLimit,
+  motionDuration = 10,
   initialTab = 'questions',
   onSelectQuestionBank,
   onSaveQuestionBank,
@@ -76,6 +79,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   onSaveMysteryImage,
   onDeleteMysteryImage,
   onUpdateAnswerTimeLimit,
+  onUpdateMotionDuration,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'questions' | 'images' | 'settings'>(initialTab);
@@ -1103,7 +1107,127 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 2: YOUTUBE BACKGROUND MUSIC FOR MOTION (ĐẨY NHẠC NỀN YOUTUBE KHI VẬN ĐỘNG) */}
+              {/* SECTION 2: MOTION TIME LIMIT SETTINGS (CÀI ĐẶT THỜI GIAN VẬN ĐỘNG - KHÔNG CỐ ĐỊNH 10S) */}
+              <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-4 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-cyan-600 text-white flex items-center justify-center font-bold shadow-md shadow-cyan-200 font-mono text-sm">
+                      <Zap className="w-5 h-5 text-cyan-200" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-extrabold text-slate-900">
+                        Thời gian vận động của học sinh trước camera
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        Tùy chỉnh số giây đếm ngược để học sinh thi đua vận động (mặc định 10s, có thể chọn 5s - 60s).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Direct Number Input and + / - Steppers */}
+                  <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                    <button
+                      onClick={() => onUpdateMotionDuration && onUpdateMotionDuration(Math.max(5, motionDuration - 5))}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm cursor-pointer"
+                      title="Giảm 5 giây"
+                    >
+                      -5s
+                    </button>
+                    <button
+                      onClick={() => onUpdateMotionDuration && onUpdateMotionDuration(Math.max(3, motionDuration - 1))}
+                      className="px-2 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm cursor-pointer"
+                      title="Giảm 1 giây"
+                    >
+                      -1s
+                    </button>
+
+                    <input
+                      type="number"
+                      min={3}
+                      max={120}
+                      value={motionDuration}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val) && onUpdateMotionDuration) {
+                          onUpdateMotionDuration(Math.max(3, Math.min(120, val)));
+                        }
+                      }}
+                      className="w-14 text-center font-mono font-black text-sm py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:outline-none"
+                    />
+
+                    <button
+                      onClick={() => onUpdateMotionDuration && onUpdateMotionDuration(Math.min(120, motionDuration + 1))}
+                      className="px-2 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm cursor-pointer"
+                      title="Tăng 1 giây"
+                    >
+                      +1s
+                    </button>
+                    <button
+                      onClick={() => onUpdateMotionDuration && onUpdateMotionDuration(Math.min(120, motionDuration + 5))}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm cursor-pointer"
+                      title="Tăng 5 giây"
+                    >
+                      +5s
+                    </button>
+                  </div>
+                </div>
+
+                {/* Range Slider */}
+                <div>
+                  <div className="flex justify-between text-[11px] font-bold text-slate-500 mb-1.5">
+                    <span>5 giây</span>
+                    <span>10s (Chuẩn)</span>
+                    <span>15s</span>
+                    <span>20s</span>
+                    <span>30s</span>
+                    <span>60 giây</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={5}
+                    max={60}
+                    step={1}
+                    value={motionDuration}
+                    onChange={(e) => onUpdateMotionDuration && onUpdateMotionDuration(Number(e.target.value))}
+                    className="w-full accent-cyan-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                </div>
+
+                {/* Quick Selection Buttons */}
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Bấm chọn nhanh mốc thời gian vận động:
+                  </label>
+                  <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                    {[
+                      { sec: 5, label: '5s (Nhanh)' },
+                      { sec: 10, label: '10s (Chuẩn)' },
+                      { sec: 15, label: '15s (Hăng say)' },
+                      { sec: 20, label: '20s (Sôi nổi)' },
+                      { sec: 30, label: '30s (Năng lượng)' },
+                      { sec: 45, label: '45s' },
+                      { sec: 60, label: '60s' },
+                    ].map(({ sec, label }) => (
+                      <button
+                        key={sec}
+                        onClick={() => {
+                          if (onUpdateMotionDuration) onUpdateMotionDuration(sec);
+                          soundManager.playClick();
+                        }}
+                        className={`py-2 px-1 rounded-xl font-mono font-bold text-xs border transition-all cursor-pointer text-center ${
+                          motionDuration === sec
+                            ? 'bg-cyan-600 text-white border-cyan-600 shadow-md font-black scale-105 ring-2 ring-cyan-300'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-cyan-50 hover:border-cyan-300'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 3: YOUTUBE BACKGROUND MUSIC FOR MOTION (ĐẨY NHẠC NỀN YOUTUBE KHI VẬN ĐỘNG) */}
               <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-5 shadow-sm">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
@@ -1120,7 +1244,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                         </span>
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">
-                        Tự động phát nhạc từ link YouTube khi học sinh bước vào 10 giây vận động (thay thế tiếng ting ting hoặc tiếng bass).
+                        Tự động phát nhạc từ link YouTube khi học sinh bước vào {motionDuration} giây vận động (thay thế tiếng ting ting hoặc tiếng bass).
                       </p>
                     </div>
                   </div>
@@ -1336,7 +1460,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                   Quy tắc tính điểm &amp; Chiến thắng:
                 </span>
                 <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
-                  <li>Vận động 10 giây qua camera: Bụng, đầu, tay, chân di chuyển sẽ được nhận diện và cộng điểm năng lượng liên tục.</li>
+                  <li>Vận động {motionDuration} giây qua camera: Bụng, đầu, tay, chân di chuyển sẽ được nhận diện và cộng điểm năng lượng liên tục.</li>
                   <li>Đội có điểm năng lượng cao hơn sẽ giành quyền trả lời câu hỏi trong số giây đã cài đặt bên trên.</li>
                   <li>Trả lời đúng được lật mở 1 mảnh tranh bí ẩn. Đội ghép đúng mảnh thứ 8 (mảnh cuối) sẽ là Đội Quán Quân!</li>
                 </ul>
