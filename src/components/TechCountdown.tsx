@@ -10,6 +10,8 @@ interface TechCountdownProps {
   variant?: 'hud-circular' | 'hud-banner' | 'hud-compact';
   label?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  resetKey?: string | number;
+  disableTicks?: boolean;
 }
 
 export const TechCountdown: React.FC<TechCountdownProps> = ({
@@ -20,6 +22,8 @@ export const TechCountdown: React.FC<TechCountdownProps> = ({
   variant = 'hud-circular',
   label = 'THỜI GIAN',
   size = 'lg',
+  resetKey,
+  disableTicks = false,
 }) => {
   // Store callbacks in refs to avoid restarting effects on parent re-renders
   const onCompleteRef = useRef(onComplete);
@@ -38,14 +42,14 @@ export const TechCountdown: React.FC<TechCountdownProps> = ({
   const animFrameRef = useRef<number | null>(null);
   const hasFinishedRef = useRef(false);
 
-  // Sync totalSeconds change if reset
+  // Sync totalSeconds change or resetKey change
   useEffect(() => {
     elapsedBeforePauseRef.current = 0;
     startTimeRef.current = null;
     hasFinishedRef.current = false;
     lastSecondRef.current = totalSeconds;
     setRemainingMs(totalSeconds * 1000);
-  }, [totalSeconds]);
+  }, [totalSeconds, resetKey]);
 
   // Robust RAF timer loop immune to parent re-renders
   useEffect(() => {
@@ -60,7 +64,14 @@ export const TechCountdown: React.FC<TechCountdownProps> = ({
       return;
     }
 
-    if (hasFinishedRef.current) return;
+    // Auto-restart cleanly if restarted after completing
+    if (hasFinishedRef.current) {
+      hasFinishedRef.current = false;
+      elapsedBeforePauseRef.current = 0;
+      startTimeRef.current = null;
+      lastSecondRef.current = totalSeconds;
+      setRemainingMs(totalMs);
+    }
 
     startTimeRef.current = performance.now();
 
@@ -81,11 +92,13 @@ export const TechCountdown: React.FC<TechCountdownProps> = ({
           onTickRef.current(currentIntegerSec);
         }
 
-        // Play high-tech tick sound
-        if (currentIntegerSec <= 3 && currentIntegerSec > 0) {
-          soundManager.playCyberTick(950, true);
-        } else if (currentIntegerSec > 0) {
-          soundManager.playCyberTick(650 + (10 - currentIntegerSec) * 25, false);
+        // Play high-tech tick sound (if not disabled by background music setting)
+        if (!disableTicks) {
+          if (currentIntegerSec <= 3 && currentIntegerSec > 0) {
+            soundManager.playCyberTick(950, true);
+          } else if (currentIntegerSec > 0) {
+            soundManager.playCyberTick(650 + (10 - currentIntegerSec) * 25, false);
+          }
         }
       }
 

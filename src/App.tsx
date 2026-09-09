@@ -30,6 +30,7 @@ import {
   Puzzle,
   ChevronRight,
   BookOpen,
+  Timer,
 } from 'lucide-react';
 
 const INITIAL_TEAMS: [Team, Team] = [
@@ -101,6 +102,7 @@ export default function App() {
 
   // Modals & Panels
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState(false);
+  const [teacherPanelInitialTab, setTeacherPanelInitialTab] = useState<'questions' | 'images' | 'settings'>('questions');
   const [isBankSelectorOpen, setIsBankSelectorOpen] = useState(false);
   const [motionRetryNotice, setMotionRetryNotice] = useState<string | null>(null);
   const [roundNotification, setRoundNotification] = useState<string | null>(null);
@@ -412,6 +414,40 @@ export default function App() {
               </button>
             </div>
 
+            {/* Answer Countdown & Sound Quick Settings Card */}
+            <div className="bg-slate-950/90 border border-indigo-500/30 rounded-2xl p-4 max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 text-left shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-950 border border-indigo-500/50 text-indigo-300 flex items-center justify-center font-bold flex-shrink-0 shadow-[0_0_12px_rgba(99,102,241,0.3)] font-mono">
+                  <Timer className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-indigo-400 uppercase tracking-wider">
+                      THỜI GIAN TRẢ LỜI CÂU HỎI:
+                    </span>
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-indigo-950 text-indigo-300 border border-indigo-600 font-black">
+                      {answerTimeLimit} GIÂY
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Thời gian đếm ngược để học sinh suy nghĩ và chọn đáp án trước khi hết giờ.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                id="btn-config-answer-time-ready"
+                onClick={() => {
+                  setTeacherPanelInitialTab('settings');
+                  setIsTeacherPanelOpen(true);
+                }}
+                className="px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white border border-indigo-400/40 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(99,102,241,0.3)] transition-all cursor-pointer"
+              >
+                <Timer className="w-4 h-4 text-indigo-200" />
+                <span>Cài đặt số giây</span>
+              </button>
+            </div>
+
             {/* Two Teams Representative Staging Cards */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
               {/* Team 1 Staging */}
@@ -469,6 +505,8 @@ export default function App() {
               currentRound={currentRound}
               onMotionComplete={handleMotionComplete}
               onRetryMotion={handleRetryMotion}
+              retryNotice={motionRetryNotice}
+              onClearRetryNotice={() => setMotionRetryNotice(null)}
             />
           </div>
         )}
@@ -610,6 +648,7 @@ export default function App() {
             }
           }}
           onUpdateAnswerTimeLimit={(sec) => setAnswerTimeLimit(sec)}
+          initialTab={teacherPanelInitialTab}
           onClose={() => setIsTeacherPanelOpen(false)}
         />
       )}

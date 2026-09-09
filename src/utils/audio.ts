@@ -336,6 +336,117 @@ class SoundManager {
       // ignore
     }
   }
+
+  // Motion Sound: Jump whoosh / laser spring
+  public playMotionJump(team: 'teamA' | 'teamB' = 'teamA') {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sawtooth';
+      const baseFreq = team === 'teamA' ? 340 : 420;
+      osc.frequency.setValueAtTime(baseFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(baseFreq * 2.6, now + 0.16);
+
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+
+      if (this.ctx.createStereoPanner) {
+        const panner = this.ctx.createStereoPanner();
+        panner.pan.setValueAtTime(team === 'teamA' ? -0.5 : 0.5, now);
+        osc.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.ctx.destination);
+      } else {
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+      }
+
+      osc.start(now);
+      osc.stop(now + 0.21);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Motion Sound: Belly sway bouncy bass / wobble
+  public playMotionBelly(team: 'teamA' | 'teamB' = 'teamA') {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'triangle';
+      const startFreq = team === 'teamA' ? 220 : 260;
+      osc.frequency.setValueAtTime(startFreq, now);
+      osc.frequency.exponentialRampToValueAtTime(startFreq * 1.6, now + 0.06);
+      osc.frequency.exponentialRampToValueAtTime(startFreq * 0.75, now + 0.15);
+
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.17);
+
+      if (this.ctx.createStereoPanner) {
+        const panner = this.ctx.createStereoPanner();
+        panner.pan.setValueAtTime(team === 'teamA' ? -0.4 : 0.4, now);
+        osc.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.ctx.destination);
+      } else {
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+      }
+
+      osc.start(now);
+      osc.stop(now + 0.18);
+    } catch {
+      // ignore
+    }
+  }
+
+  // Motion Sound: Dynamic motion pulse rhythm (tempo and pitch scale with movement)
+  public playMotionPulse(energy: number, team: 'teamA' | 'teamB' | 'both' = 'both') {
+    if (this.isMuted) return;
+    try {
+      this.initContext();
+      if (!this.ctx) return;
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+
+      osc.type = 'sine';
+      // Pitch scales with student motion energy
+      const pitch = Math.min(880, Math.max(280, 300 + energy * 5));
+      osc.frequency.setValueAtTime(pitch, now);
+      osc.frequency.exponentialRampToValueAtTime(pitch * 0.82, now + 0.07);
+
+      const vol = Math.min(0.18, 0.05 + (energy / 100) * 0.13);
+      gain.gain.setValueAtTime(vol, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+
+      if (team !== 'both' && this.ctx.createStereoPanner) {
+        const panner = this.ctx.createStereoPanner();
+        panner.pan.setValueAtTime(team === 'teamA' ? -0.4 : 0.4, now);
+        osc.connect(gain);
+        gain.connect(panner);
+        panner.connect(this.ctx.destination);
+      } else {
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+      }
+
+      osc.start(now);
+      osc.stop(now + 0.08);
+    } catch {
+      // ignore
+    }
+  }
 }
 
 export const soundManager = new SoundManager();

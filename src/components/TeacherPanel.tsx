@@ -9,6 +9,14 @@ import { extractTextFromFile, parseQuestionsFromText } from '../utils/fileParser
 import { compressAndResizeImage } from '../utils/imageSlice';
 import { soundManager } from '../utils/audio';
 import {
+  YouTubeMusicConfig,
+  loadYouTubeMusicConfig,
+  saveYouTubeMusicConfig,
+  extractYouTubeVideoId,
+  YOUTUBE_PRESETS,
+} from '../utils/youtube';
+import { YouTubePlayer } from './YouTubePlayer';
+import {
   X,
   Upload,
   Plus,
@@ -23,6 +31,18 @@ import {
   HardDrive,
   Eye,
   BookOpen,
+  Clock,
+  Timer,
+  Volume2,
+  VolumeX,
+  Sparkles,
+  Zap,
+  Play,
+  Music,
+  Radio,
+  ExternalLink,
+  RotateCcw,
+  Link2,
 } from 'lucide-react';
 
 interface TeacherPanelProps {
@@ -31,6 +51,7 @@ interface TeacherPanelProps {
   mysteryImages: MysteryImage[];
   currentImageId: string;
   answerTimeLimit: number;
+  initialTab?: 'questions' | 'images' | 'settings';
   onSelectQuestionBank: (bankId: string) => void;
   onSaveQuestionBank: (bank: QuestionBank) => void;
   onDeleteQuestionBank: (bankId: string) => void;
@@ -47,6 +68,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   mysteryImages,
   currentImageId,
   answerTimeLimit,
+  initialTab = 'questions',
   onSelectQuestionBank,
   onSaveQuestionBank,
   onDeleteQuestionBank,
@@ -56,7 +78,38 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   onUpdateAnswerTimeLimit,
   onClose,
 }) => {
-  const [activeTab, setActiveTab] = useState<'questions' | 'images' | 'settings'>('questions');
+  const [activeTab, setActiveTab] = useState<'questions' | 'images' | 'settings'>(initialTab);
+  const [motionAudioSetting, setMotionAudioSetting] = useState<boolean>(() => {
+    return localStorage.getItem('cpmg_motion_audio') !== 'false';
+  });
+
+  // YouTube Background Music Settings
+  const [ytConfig, setYtConfig] = useState<YouTubeMusicConfig>(() => loadYouTubeMusicConfig());
+  const [customYtUrlInput, setCustomYtUrlInput] = useState(ytConfig.url);
+  const [isTestingAudio, setIsTestingAudio] = useState(false);
+  const [ytInputFeedback, setYtInputFeedback] = useState<string | null>(null);
+
+  const handleUpdateYtConfig = (newConfig: YouTubeMusicConfig) => {
+    setYtConfig(newConfig);
+    saveYouTubeMusicConfig(newConfig);
+  };
+
+  const handleApplyCustomUrl = () => {
+    const videoId = extractYouTubeVideoId(customYtUrlInput);
+    if (!videoId) {
+      setYtInputFeedback('Link YouTube không hợp lệ! Vui lòng kiểm tra lại đường dẫn.');
+      return;
+    }
+    const updated: YouTubeMusicConfig = {
+      ...ytConfig,
+      url: customYtUrlInput.trim(),
+      videoId,
+      title: ytConfig.title || 'Nhạc Nền Tự Chọn',
+    };
+    handleUpdateYtConfig(updated);
+    setYtInputFeedback('Đã nhận diện thành công mã video YouTube: ' + videoId);
+    setTimeout(() => setYtInputFeedback(null), 4000);
+  };
 
   // Question file upload & preview state
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -899,42 +952,394 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
 
           {/* TAB 3: GAME SETTINGS */}
           {activeTab === 'settings' && (
-            <div className="max-w-xl mx-auto space-y-6 py-4">
-              <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 space-y-4">
+            <div className="max-w-2xl mx-auto space-y-6 py-2">
+              {/* SECTION 1: QUESTION ANSWER COUNTDOWN TIME */}
+              <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-md">
+                      <Timer className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                        <span>Số giây đếm ngược trả lời câu hỏi</span>
+                        <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 font-black border border-indigo-200">
+                          ĐANG CHỌN: {answerTimeLimit}S
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Thời gian để đội thắng vận động suy nghĩ, thảo luận và chọn đáp án A, B, C, D trước khi hết lượt.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Audio tick test button */}
+                  <button
+                    onClick={() => {
+                      soundManager.playCyberTick(800);
+                      setTimeout(() => soundManager.playCyberTick(850), 300);
+                      setTimeout(() => soundManager.playCyberTick(900, true), 600);
+                    }}
+                    className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs rounded-xl border border-slate-300 shadow-sm flex items-center gap-1.5 transition-all flex-shrink-0"
+                    title="Nghe thử âm thanh đếm ngược"
+                  >
+                    <Volume2 className="w-4 h-4 text-indigo-600" />
+                    <span className="hidden sm:inline">Nghe thử âm đếm nhịp</span>
+                  </button>
+                </div>
+
+                {/* Big Visual Display & Direct Steppers */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-inner flex flex-col sm:flex-row items-center justify-between gap-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white flex flex-col items-center justify-center shadow-lg font-mono">
+                      <span className="text-2xl font-black leading-none">{answerTimeLimit}</span>
+                      <span className="text-[10px] font-bold uppercase opacity-80 mt-0.5">Giây</span>
+                    </div>
+                    <div>
+                      <div className="text-xs font-bold text-slate-800">
+                        {answerTimeLimit <= 10 && '⚡ Tốc độ tia chớp - Thử thách phản xạ nhanh'}
+                        {answerTimeLimit > 10 && answerTimeLimit <= 20 && '⭐ Tiêu chuẩn - Thích hợp nhất cho học sinh'}
+                        {answerTimeLimit > 20 && answerTimeLimit <= 35 && '📖 Thư thái - Đủ thời gian đọc câu hỏi dài'}
+                        {answerTimeLimit > 35 && '👥 Thảo luận nhóm sâu / Bài tập tính toán'}
+                      </div>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Đồng hồ hiển thị dạng vòng tròn vi tính với hiệu ứng cảnh báo 5 giây cuối.
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Direct Number Input and + / - Steppers */}
+                  <div className="flex items-center gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+                    <button
+                      onClick={() => onUpdateAnswerTimeLimit(Math.max(5, answerTimeLimit - 5))}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm"
+                      title="Giảm 5 giây"
+                    >
+                      -5s
+                    </button>
+                    <button
+                      onClick={() => onUpdateAnswerTimeLimit(Math.max(5, answerTimeLimit - 1))}
+                      className="px-2 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm"
+                      title="Giảm 1 giây"
+                    >
+                      -1s
+                    </button>
+
+                    <input
+                      type="number"
+                      min={5}
+                      max={180}
+                      value={answerTimeLimit}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val)) {
+                          onUpdateAnswerTimeLimit(Math.max(5, Math.min(180, val)));
+                        }
+                      }}
+                      className="w-14 text-center font-mono font-black text-sm py-1.5 bg-white border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    />
+
+                    <button
+                      onClick={() => onUpdateAnswerTimeLimit(Math.min(180, answerTimeLimit + 1))}
+                      className="px-2 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm"
+                      title="Tăng 1 giây"
+                    >
+                      +1s
+                    </button>
+                    <button
+                      onClick={() => onUpdateAnswerTimeLimit(Math.min(180, answerTimeLimit + 5))}
+                      className="px-2.5 py-1.5 bg-white hover:bg-slate-200 text-slate-700 font-black text-xs rounded-lg border border-slate-300 transition-colors shadow-sm"
+                      title="Tăng 5 giây"
+                    >
+                      +5s
+                    </button>
+                  </div>
+                </div>
+
+                {/* Range Slider */}
                 <div>
-                  <label className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
-                    Thời gian trả lời câu hỏi trắc nghiệm:
+                  <div className="flex justify-between text-[11px] font-bold text-slate-500 mb-1.5">
+                    <span>5 giây</span>
+                    <span>15s</span>
+                    <span>20s (Gợi ý)</span>
+                    <span>30s</span>
+                    <span>60s</span>
+                    <span>120 giây</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={5}
+                    max={120}
+                    step={1}
+                    value={answerTimeLimit}
+                    onChange={(e) => onUpdateAnswerTimeLimit(Number(e.target.value))}
+                    className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                  />
+                </div>
+
+                {/* Quick Selection Buttons */}
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Hoặc bấm chọn nhanh mốc giây mong muốn:
                   </label>
-                  <p className="text-xs text-slate-500 mb-2">
-                    Thời gian để đội thắng vận động suy nghĩ và chọn đáp án trước khi mất quyền.
-                  </p>
-                  <div className="grid grid-cols-4 gap-2">
-                    {[15, 20, 30, 45].map((sec) => (
+                  <div className="grid grid-cols-5 sm:grid-cols-10 gap-1.5">
+                    {[5, 10, 15, 20, 25, 30, 45, 60, 90, 120].map((sec) => (
                       <button
                         key={sec}
-                        onClick={() => onUpdateAnswerTimeLimit(sec)}
-                        className={`py-2.5 rounded-xl font-black text-sm border-2 transition-all ${
+                        onClick={() => {
+                          onUpdateAnswerTimeLimit(sec);
+                          soundManager.playClick();
+                        }}
+                        className={`py-2 rounded-xl font-mono font-bold text-xs border transition-all ${
                           answerTimeLimit === sec
-                            ? 'bg-indigo-600 text-white border-indigo-600 shadow'
-                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-md font-black scale-105 ring-2 ring-indigo-300'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-indigo-50 hover:border-indigo-300'
                         }`}
                       >
-                        {sec} Giây
+                        {sec}s
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: YOUTUBE BACKGROUND MUSIC FOR MOTION (ĐẨY NHẠC NỀN YOUTUBE KHI VẬN ĐỘNG) */}
+              <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-5 shadow-sm">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center font-bold shadow-md shadow-red-200">
+                      <Music className="w-6 h-6 fill-white" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-sm sm:text-base font-extrabold text-slate-900">
+                          Nhạc Nền YouTube Khi Học Sinh Vận Động
+                        </h4>
+                        <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">
+                          YOUTUBE AUDIO
+                        </span>
+                      </div>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Tự động phát nhạc từ link YouTube khi học sinh bước vào 10 giây vận động (thay thế tiếng ting ting hoặc tiếng bass).
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Master Toggle */}
+                  <button
+                    onClick={() => {
+                      const updated = { ...ytConfig, enabled: !ytConfig.enabled };
+                      handleUpdateYtConfig(updated);
+                      soundManager.playClick();
+                    }}
+                    className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 transition-all shadow-sm cursor-pointer ${
+                      ytConfig.enabled
+                        ? 'bg-red-600 text-white hover:bg-red-700 shadow-red-200'
+                        : 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                    }`}
+                  >
+                    {ytConfig.enabled ? (
+                      <>
+                        <Volume2 className="w-4 h-4" />
+                        <span>BẬT NHẠC YOUTUBE</span>
+                      </>
+                    ) : (
+                      <>
+                        <VolumeX className="w-4 h-4" />
+                        <span>ĐÃ TẮT</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {/* URL Input & Verification */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3">
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600 flex items-center justify-between">
+                    <span className="flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-red-500" />
+                      Dán đường link YouTube bài hát mong muốn:
+                    </span>
+                    {ytConfig.videoId && (
+                      <span className="text-[10px] font-mono text-emerald-600 font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> ID: {ytConfig.videoId}
+                      </span>
+                    )}
+                  </label>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={customYtUrlInput}
+                      onChange={(e) => setCustomYtUrlInput(e.target.value)}
+                      placeholder="Dán link (https://www.youtube.com/watch?v=... hoặc https://youtu.be/...)"
+                      className="flex-1 px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs sm:text-sm font-mono text-slate-800 focus:outline-none focus:ring-2 focus:ring-red-500"
+                    />
+                    <button
+                      onClick={handleApplyCustomUrl}
+                      className="px-4 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1.5 cursor-pointer flex-shrink-0"
+                    >
+                      <Check className="w-4 h-4" />
+                      <span>Áp dụng link</span>
+                    </button>
+                  </div>
+
+                  {ytInputFeedback && (
+                    <p
+                      className={`text-xs font-medium ${
+                        ytInputFeedback.includes('không hợp lệ') ? 'text-rose-600' : 'text-emerald-600'
+                      }`}
+                    >
+                      {ytInputFeedback}
+                    </p>
+                  )}
+                </div>
+
+                {/* 1-Click Preset Suggestions */}
+                <div>
+                  <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-500 block mb-2">
+                    Hoặc chọn nhanh bài hát khởi động thể dục vui nhộn có sẵn:
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                    {YOUTUBE_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        onClick={() => {
+                          setCustomYtUrlInput(preset.url);
+                          handleUpdateYtConfig({
+                            ...ytConfig,
+                            url: preset.url,
+                            videoId: preset.videoId,
+                            title: preset.title,
+                            startOffset: preset.startOffset,
+                          });
+                          soundManager.playClick();
+                        }}
+                        className={`p-3 rounded-2xl text-left border transition-all cursor-pointer flex flex-col justify-between ${
+                          ytConfig.videoId === preset.videoId
+                            ? 'bg-red-50 border-red-400 ring-2 ring-red-200 text-slate-900'
+                            : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-100 hover:border-slate-300'
+                        }`}
+                      >
+                        <div>
+                          <div className="flex items-center justify-between gap-1 mb-1">
+                            <span className="text-[10px] font-black uppercase px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                              {preset.category}
+                            </span>
+                            {ytConfig.videoId === preset.videoId && (
+                              <CheckCircle2 className="w-4 h-4 text-red-600 flex-shrink-0" />
+                            )}
+                          </div>
+                          <p className="text-xs font-extrabold line-clamp-1">{preset.title}</p>
+                          <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{preset.description}</p>
+                        </div>
                       </button>
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 border-t border-slate-200">
-                  <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block mb-1">
-                    Quy tắc tính điểm &amp; Chiến thắng:
-                  </span>
-                  <ul className="text-xs text-slate-600 space-y-1.5 list-disc pl-4">
-                    <li>Vận động 10 giây qua camera: Khớp vai, khuỷu tay, cổ tay, hông, gối di chuyển sẽ tạo điểm.</li>
-                    <li>Đội thắng vận động được trả lời câu hỏi. Đúng: được ghép 1 mảnh tranh bí ẩn.</li>
-                    <li>Đội ghép đúng mảnh thứ 8 (mảnh cuối cùng) sẽ là Đội Quán Quân!</li>
-                  </ul>
+                {/* Volume, Offset & Mute Synth settings */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+                  {/* Volume Slider */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                        Âm lượng nhạc nền:
+                      </label>
+                      <span className="text-xs font-mono font-bold text-red-600">
+                        {ytConfig.volume}%
+                      </span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={ytConfig.volume}
+                      onChange={(e) =>
+                        handleUpdateYtConfig({ ...ytConfig, volume: Number(e.target.value) })
+                      }
+                      className="w-full accent-red-600 h-2 bg-slate-200 rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Start Offset */}
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="text-[11px] font-extrabold uppercase tracking-wider text-slate-600">
+                        Phát từ giây thứ:
+                      </label>
+                      <span className="text-xs font-mono font-bold text-slate-700">
+                        {ytConfig.startOffset}s
+                      </span>
+                    </div>
+                    <div className="flex gap-1.5">
+                      {[0, 10, 15, 30].map((sec) => (
+                        <button
+                          key={sec}
+                          onClick={() => handleUpdateYtConfig({ ...ytConfig, startOffset: sec })}
+                          className={`flex-1 py-1 rounded-lg text-xs font-mono font-bold border ${
+                            ytConfig.startOffset === sec
+                              ? 'bg-red-600 text-white border-red-600'
+                              : 'bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100'
+                          }`}
+                        >
+                          {sec}s
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Mute Synth Checkbox */}
+                  <div className="flex flex-col justify-center">
+                    <label className="flex items-start gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={ytConfig.muteSynthAudio}
+                        onChange={(e) =>
+                          handleUpdateYtConfig({ ...ytConfig, muteSynthAudio: e.target.checked })
+                        }
+                        className="mt-1 w-4 h-4 text-red-600 rounded border-slate-300 focus:ring-red-500"
+                      />
+                      <span className="text-xs text-slate-700 font-bold leading-tight">
+                        Tắt tiếng "ting ting" &amp; "tiếng bass" điện tử (chỉ nghe trọn vẹn nhạc nền YouTube)
+                      </span>
+                    </label>
+                  </div>
                 </div>
+
+                {/* Embedded Live Test Player Preview */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-xs font-extrabold text-slate-600">
+                    <span>Nghe thử và kiểm tra âm thanh trước khi vào trận:</span>
+                    <a
+                      href={`https://www.youtube.com/watch?v=${ytConfig.videoId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-red-600 hover:text-red-700 flex items-center gap-1 text-xs"
+                    >
+                      <span>Mở link gốc YouTube</span>
+                      <ExternalLink className="w-3.5 h-3.5" />
+                    </a>
+                  </div>
+
+                  <YouTubePlayer
+                    config={ytConfig}
+                    isPlaying={isTestingAudio}
+                    onConfigChange={handleUpdateYtConfig}
+                  />
+                </div>
+              </div>
+
+              {/* SECTION 3: RULES SUMMARY */}
+              <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block mb-1.5">
+                  Quy tắc tính điểm &amp; Chiến thắng:
+                </span>
+                <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
+                  <li>Vận động 10 giây qua camera: Bụng, đầu, tay, chân di chuyển sẽ được nhận diện và cộng điểm năng lượng liên tục.</li>
+                  <li>Đội có điểm năng lượng cao hơn sẽ giành quyền trả lời câu hỏi trong số giây đã cài đặt bên trên.</li>
+                  <li>Trả lời đúng được lật mở 1 mảnh tranh bí ẩn. Đội ghép đúng mảnh thứ 8 (mảnh cuối) sẽ là Đội Quán Quân!</li>
+                </ul>
               </div>
             </div>
           )}
