@@ -19,6 +19,7 @@ interface VictoryModalProps {
   winningTeam: Team;
   teams: [Team, Team];
   mysteryImage: MysteryImage;
+  totalPieces?: number;
   onPlayAgain: () => void;
   onChangeImageAndBank: () => void;
 }
@@ -27,6 +28,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
   winningTeam,
   teams,
   mysteryImage,
+  totalPieces = TOTAL_PIECES,
   onPlayAgain,
   onChangeImageAndBank,
 }) => {
@@ -162,7 +164,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
                             <Puzzle className="w-3.5 h-3.5 text-indigo-500" />
                             Mảnh ghép:
                           </span>
-                          <strong className="text-slate-900 font-black">{t.piecesCollected} / {TOTAL_PIECES}</strong>
+                          <strong className="text-slate-900 font-black">{t.piecesCollected} / {totalPieces}</strong>
                         </div>
                         <div className="flex justify-between text-slate-600">
                           <span className="flex items-center gap-1">
@@ -227,6 +229,7 @@ export const VictoryModal: React.FC<VictoryModalProps> = ({
           winningTeam={winningTeam}
           mysteryImage={mysteryImage}
           dateStr={dateStr}
+          totalPieces={totalPieces}
           onClose={() => setShowCertificate(false)}
         />
       )}

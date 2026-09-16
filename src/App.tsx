@@ -6,10 +6,12 @@ import {
   QuestionBank,
   MysteryImage,
   Question,
+  PuzzlePieceCount,
 } from './types';
 import { DEFAULT_QUESTION_BANKS } from './data/sampleQuestions';
 import { DEFAULT_MYSTERY_IMAGES } from './data/sampleImages';
 import { sliceImageIntoPieces, TOTAL_PIECES } from './utils/imageSlice';
+import { PIECE_CONFIGS } from './utils/jigsaw';
 import { soundManager } from './utils/audio';
 import { Header } from './components/Header';
 import { ScoreBoard } from './components/ScoreBoard';
@@ -94,6 +96,12 @@ export default function App() {
     return saved ? parseInt(saved, 10) : 10;
   });
 
+  const [puzzlePieceCount, setPuzzlePieceCount] = useState<PuzzlePieceCount>(() => {
+    const saved = localStorage.getItem('cpmg_piece_count');
+    const parsed = saved ? (parseInt(saved, 10) as PuzzlePieceCount) : 8;
+    return [4, 6, 8, 9].includes(parsed) ? parsed : 8;
+  });
+
   // Game Loop States
   const [phase, setPhase] = useState<GamePhase>('ready');
   const [currentRound, setCurrentRound] = useState(1);
@@ -152,21 +160,41 @@ export default function App() {
     localStorage.setItem('cpmg_motion_duration', String(motionDuration));
   }, [motionDuration]);
 
-  // Initialize or re-slice puzzle pieces when mystery image changes or on start
-  const initPuzzlePieces = useCallback(async (imageSrc: string) => {
+  useEffect(() => {
+    localStorage.setItem('cpmg_piece_count', String(puzzlePieceCount));
+  }, [puzzlePieceCount]);
+
+  // Initialize or re-slice puzzle pieces when mystery image changes or piece count changes
+  const initPuzzlePieces = useCallback(async (imageSrc: string, count: PuzzlePieceCount = puzzlePieceCount) => {
     try {
-      const sliced = await sliceImageIntoPieces(imageSrc);
+      const sliced = await sliceImageIntoPieces(imageSrc, count);
       setPieces(sliced);
     } catch (err) {
       console.error('Error slicing puzzle image:', err);
     }
-  }, []);
+  }, [puzzlePieceCount]);
 
   useEffect(() => {
     if (activeImage) {
-      initPuzzlePieces(activeImage.dataUrl);
+      initPuzzlePieces(activeImage.dataUrl, puzzlePieceCount);
     }
-  }, [activeImage, initPuzzlePieces]);
+  }, [activeImage, puzzlePieceCount, initPuzzlePieces]);
+
+  // Update puzzle piece count (4, 6, 8, 9)
+  const handleUpdatePieceCount = (newCount: PuzzlePieceCount) => {
+    soundManager.playClick();
+    setPuzzlePieceCount(newCount);
+    if (activeImage) {
+      initPuzzlePieces(activeImage.dataUrl, newCount);
+    }
+    // Reset pieces collected in teams so count is clean
+    setTeams((prev) => [
+      { ...prev[0], piecesCollected: 0 },
+      { ...prev[1], piecesCollected: 0 },
+    ]);
+    setRoundNotification(`Đã chuyển sang chế độ ${newCount} mảnh ghép (${PIECE_CONFIGS[newCount]?.cols}×${PIECE_CONFIGS[newCount]?.rows})!`);
+    setTimeout(() => setRoundNotification(null), 4000);
+  };
 
   // Reset entire game match: Open confirmation modal
   const handleRequestResetGame = () => {
@@ -315,15 +343,16 @@ export default function App() {
     ]);
 
     const totalPlaced = updatedPieces.filter((p) => p.isPlaced).length;
+    const maxPieces = pieces.length || puzzlePieceCount;
 
-    // Victory condition check: 8th piece placed!
-    // "Đội ghép đúng mảnh thứ 8 là đội chiến thắng."
-    if (totalPlaced >= TOTAL_PIECES) {
+    // Victory condition check: all pieces placed!
+    // "Đội ghép đúng mảnh cuối cùng là đội chiến thắng."
+    if (totalPlaced >= maxPieces) {
       setPhase('victory');
     } else {
       const placingTeam = teamId === 'teamA' ? teams[0] : teams[1];
       setRoundNotification(
-        `Xuất sắc! Đội ${placingTeam.name} đã ghép thành công mảnh ghép vào bức tranh! Khung tranh hiện đã có ${totalPlaced}/${TOTAL_PIECES} mảnh.`
+        `Xuất sắc! Đội ${placingTeam.name} đã ghép thành công mảnh ghép vào bức tranh! Khung tranh hiện đã có ${totalPlaced}/${maxPieces} mảnh.`
       );
       setPhase('round_end');
     }
@@ -404,6 +433,7 @@ export default function App() {
           currentRound={currentRound}
           phase={phase}
           activeTeamId={activeMotionWinner}
+          totalPieces={pieces.length || puzzlePieceCount}
           onUpdateTeamName={handleUpdateTeamName}
           onResetGame={handleRequestResetGame}
         />
@@ -510,6 +540,68 @@ export default function App() {
               >
                 <Timer className="w-4 h-4 text-cyan-200" />
                 <span>Tùy chỉnh số giây</span>
+              </button>
+            </div>
+
+            {/* Puzzle Piece Count Quick Setting Card (Lựa chọn 4, 6, 8, 9 mảnh) */}
+            <div className="bg-slate-950/90 border border-amber-500/30 rounded-2xl p-4 max-w-2xl mx-auto flex flex-wrap items-center justify-between gap-3 text-left shadow-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-950 border border-amber-500/50 text-amber-300 flex items-center justify-center font-bold flex-shrink-0 shadow-[0_0_12px_rgba(245,158,11,0.3)]">
+                  <Puzzle className="w-5 h-5 text-amber-400" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-amber-400 uppercase tracking-wider">
+                      CHẾ ĐỘ SỐ LƯỢNG MẢNH GHÉP:
+                    </span>
+                    <span className="text-xs font-mono px-2.5 py-0.5 rounded-full bg-amber-950 text-amber-300 border border-amber-600 font-black">
+                      {puzzlePieceCount} MẢNH ({PIECE_CONFIGS[puzzlePieceCount]?.cols}×{PIECE_CONFIGS[puzzlePieceCount]?.rows})
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Lựa chọn số lượng mảnh ghép của bức tranh bí ẩn phù hợp với độ dài tiết học.
+                  </p>
+                  {/* Quick Select Buttons for 4, 6, 8, 9 pieces */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <span className="text-[10px] text-slate-400 font-mono">Chọn số mảnh:</span>
+                    {(
+                      [
+                        { count: 4 as PuzzlePieceCount, label: '4 Mảnh', note: '2×2' },
+                        { count: 6 as PuzzlePieceCount, label: '6 Mảnh', note: '3×2' },
+                        { count: 8 as PuzzlePieceCount, label: '8 Mảnh', note: '4×2 chuẩn' },
+                        { count: 9 as PuzzlePieceCount, label: '9 Mảnh', note: '3×3' },
+                      ] as const
+                    ).map((item) => (
+                      <button
+                        key={item.count}
+                        id={`btn-quick-piece-${item.count}`}
+                        onClick={() => handleUpdatePieceCount(item.count)}
+                        className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all flex items-center gap-1 cursor-pointer ${
+                          puzzlePieceCount === item.count
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-md shadow-amber-500/30 ring-2 ring-amber-300'
+                            : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        <span className={`text-[10px] font-normal opacity-80 ${puzzlePieceCount === item.count ? 'text-amber-950' : 'text-slate-400'}`}>
+                          ({item.note})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                id="btn-config-piece-count-ready"
+                onClick={() => {
+                  setTeacherPanelInitialTab('settings');
+                  setIsTeacherPanelOpen(true);
+                }}
+                className="px-3.5 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white border border-amber-400/40 rounded-xl font-bold text-xs flex items-center gap-1.5 shadow-[0_0_15px_rgba(245,158,11,0.3)] transition-all cursor-pointer"
+              >
+                <Puzzle className="w-4 h-4 text-amber-200" />
+                <span>Chi tiết số mảnh</span>
               </button>
             </div>
 
@@ -663,12 +755,12 @@ export default function App() {
               )}
             </div>
 
-            {/* Current mini preview of 8 pieces */}
+            {/* Current mini preview of pieces */}
             <div className="bg-slate-950/80 p-4 rounded-2xl border border-cyan-500/30 max-w-md mx-auto">
               <div className="flex justify-between items-center text-xs font-mono font-bold text-slate-300 mb-2">
                 <span>TIẾN ĐỘ BỨC TRANH BÍ ẨN:</span>
                 <span className="text-cyan-300">
-                  {pieces.filter((p) => p.isPlaced).length} / {TOTAL_PIECES} Mảnh
+                  {pieces.filter((p) => p.isPlaced).length} / {pieces.length || puzzlePieceCount} Mảnh
                 </span>
               </div>
               <div className="max-w-md mx-auto">
@@ -710,6 +802,7 @@ export default function App() {
             winningTeam={winningTeam}
             teams={teams}
             mysteryImage={activeImage}
+            totalPieces={pieces.length || puzzlePieceCount}
             onPlayAgain={() => {
               handlePerformResetGame({ randomizeImage: false, resetTeamNames: false });
             }}
@@ -729,6 +822,7 @@ export default function App() {
           currentImageId={currentImageId}
           answerTimeLimit={answerTimeLimit}
           motionDuration={motionDuration}
+          puzzlePieceCount={puzzlePieceCount}
           onSelectQuestionBank={handleSelectQuestionBank}
           onSaveQuestionBank={handleSaveQuestionBank}
           onDeleteQuestionBank={handleDeleteQuestionBank}
@@ -736,7 +830,7 @@ export default function App() {
             setCurrentImageId(imgId);
             const found = mysteryImages.find((img) => img.id === imgId);
             if (found) {
-              initPuzzlePieces(found.dataUrl);
+              initPuzzlePieces(found.dataUrl, puzzlePieceCount);
             }
           }}
           onSaveMysteryImage={(img) => {
@@ -756,12 +850,13 @@ export default function App() {
               const remaining = mysteryImages.filter((item) => item.id !== imgId);
               if (remaining.length > 0) {
                 setCurrentImageId(remaining[0].id);
-                initPuzzlePieces(remaining[0].dataUrl);
+                initPuzzlePieces(remaining[0].dataUrl, puzzlePieceCount);
               }
             }
           }}
           onUpdateAnswerTimeLimit={(sec) => setAnswerTimeLimit(sec)}
           onUpdateMotionDuration={(sec) => setMotionDuration(sec)}
+          onUpdatePieceCount={handleUpdatePieceCount}
           onResetGame={handleRequestResetGame}
           initialTab={teacherPanelInitialTab}
           onClose={() => setIsTeacherPanelOpen(false)}
@@ -785,7 +880,7 @@ export default function App() {
         isOpen={isResetModalOpen}
         currentRound={currentRound}
         placedPiecesCount={pieces.filter((p) => p.isPlaced).length}
-        totalPieces={TOTAL_PIECES}
+        totalPieces={pieces.length || puzzlePieceCount}
         onConfirm={handlePerformResetGame}
         onClose={() => setIsResetModalOpen(false)}
       />

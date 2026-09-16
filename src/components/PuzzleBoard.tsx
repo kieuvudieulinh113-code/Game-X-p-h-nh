@@ -1,16 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { PuzzlePiece, Team, MysteryImage } from '../types';
+import { PuzzlePiece, Team, MysteryImage, PuzzlePieceCount } from '../types';
 import { soundManager } from '../utils/audio';
 import {
-  JIGSAW_GEOMETRY,
+  getGeometryForCount,
+  PIECE_CONFIGS,
   BOARD_WIDTH,
   BOARD_HEIGHT,
-  JIGSAW_COLS,
-  JIGSAW_ROWS,
-  JIGSAW_TOTAL,
   JigsawPieceGeometry,
 } from '../utils/jigsaw';
-import { TOTAL_PIECES } from '../utils/imageSlice';
 import {
   HelpCircle,
   Sparkles,
@@ -47,7 +44,12 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
   const [showNumbers, setShowNumbers] = useState(false); // Default FALSE: No spoiler numbers so students have to think!
   const [feedbackMsg, setFeedbackMsg] = useState<{ text: string; isError: boolean } | null>(null);
 
-  // Scrambled order of loose piece IDs (lộn xộn không theo thứ tự từ 1-9)
+  // Dynamic geometry according to number of pieces in current game mode (4, 6, 8, 9)
+  const totalPieces = (pieces.length as PuzzlePieceCount) || 8;
+  const geometries = getGeometryForCount(totalPieces);
+  const config = PIECE_CONFIGS[totalPieces] || PIECE_CONFIGS[8];
+
+  // Scrambled order of loose piece IDs (lộn xộn không theo thứ tự từ 1-N)
   const [shuffledIds, setShuffledIds] = useState<number[]>([]);
 
   const isTeamA = activeTeam.id === 'teamA';
@@ -100,19 +102,19 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
       : null;
 
   const activeGeom =
-    currentActivePieceId !== null ? JIGSAW_GEOMETRY[currentActivePieceId] : null;
+    currentActivePieceId !== null ? geometries[currentActivePieceId] : null;
 
   // Spatial thinking clue helper for primary students
   const getPieceSpatialClue = (geom: JigsawPieceGeometry | null) => {
     if (!geom) return null;
     const isCorner =
-      (geom.row === 0 || geom.row === JIGSAW_ROWS - 1) &&
-      (geom.col === 0 || geom.col === JIGSAW_COLS - 1);
+      (geom.row === 0 || geom.row === config.rows - 1) &&
+      (geom.col === 0 || geom.col === config.cols - 1);
     const isCenter =
       geom.row > 0 &&
-      geom.row < JIGSAW_ROWS - 1 &&
+      geom.row < config.rows - 1 &&
       geom.col > 0 &&
-      geom.col < JIGSAW_COLS - 1;
+      geom.col < config.cols - 1;
 
     if (isCorner) {
       const v = geom.row === 0 ? 'trên' : 'dưới';
@@ -251,7 +253,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
             <Layers className="w-4 h-4 text-amber-400" />
             <span className="text-xs font-mono text-slate-300">Tiến độ bức tranh:</span>
             <span className="text-sm font-mono font-black text-amber-300">
-              {placedCount} / {TOTAL_PIECES} Mảnh
+              {placedCount} / {totalPieces} Mảnh
             </span>
           </div>
 
@@ -414,7 +416,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 <div className="aspect-square w-full rounded-xl bg-[#2a1406] border-2 border-dashed border-amber-400/30 flex flex-col items-center justify-center text-center p-3 text-amber-200/60 text-xs">
                   <Trophy className="w-8 h-8 text-amber-400 mb-1 animate-bounce" />
                   <span className="font-bold text-amber-200">ĐÃ HOÀN THÀNH!</span>
-                  <span>Tất cả {TOTAL_PIECES} mảnh đã được ghép trọn vẹn</span>
+                  <span>Tất cả {totalPieces} mảnh đã được ghép trọn vẹn</span>
                 </div>
               )}
 
@@ -434,7 +436,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                   <div className="grid grid-cols-3 gap-1.5 max-h-48 overflow-y-auto pr-1">
                     {scrambledUnplacedPieces.map((p) => {
                       const isSelected = p.id === currentActivePieceId;
-                      const g = JIGSAW_GEOMETRY[p.id];
+                      const g = geometries[p.id];
                       return (
                         <div
                           key={p.id}
@@ -534,8 +536,8 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 className="w-full h-full block"
               >
                 <defs>
-                  {/* Clip paths for all 9 pieces */}
-                  {JIGSAW_GEOMETRY.map((geom) => (
+                  {/* Clip paths for all puzzle pieces */}
+                  {geometries.map((geom) => (
                     <clipPath key={geom.id} id={`jigsaw-clip-${geom.id}`}>
                       <path d={geom.pathData} />
                     </clipPath>
@@ -574,7 +576,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 </defs>
 
                 {/* 1. LAYER: Empty Slots (Authentic Carved Cavities on Board) */}
-                {JIGSAW_GEOMETRY.map((geom) => {
+                {geometries.map((geom) => {
                   const piece = pieces.find((p) => p.id === geom.id);
                   const isPlaced = piece?.isPlaced;
                   if (isPlaced) return null;
@@ -669,7 +671,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
                 })}
 
                 {/* 2. LAYER: Placed Pieces forming ONE SEAMLESS PAINTING */}
-                {JIGSAW_GEOMETRY.map((geom) => {
+                {geometries.map((geom) => {
                   const piece = pieces.find((p) => p.id === geom.id);
                   const isPlaced = piece?.isPlaced;
                   if (!isPlaced) return null;
@@ -754,7 +756,7 @@ export const PuzzleBoard: React.FC<PuzzleBoardProps> = ({
               </svg>
 
               {/* All pieces placed celebration overlay */}
-              {placedCount === TOTAL_PIECES && (
+              {placedCount === totalPieces && (
                 <div className="absolute inset-0 bg-gradient-to-t from-amber-500/20 via-transparent to-transparent pointer-events-none flex items-center justify-center animate-pulse">
                   <div className="bg-black/80 backdrop-blur-md px-6 py-3 rounded-2xl border-2 border-amber-400 text-amber-300 font-mono font-black text-base sm:text-lg flex items-center gap-2 shadow-[0_0_30px_rgba(245,158,11,0.6)]">
                     <Sparkles className="w-5 h-5 text-amber-400" />

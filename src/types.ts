@@ -1,4 +1,5 @@
 export type GradeLevel = 'lop3' | 'lop4' | 'khac';
+export type PuzzlePieceCount = 4 | 6 | 8 | 9;
 
 export interface Question {
   id: string;

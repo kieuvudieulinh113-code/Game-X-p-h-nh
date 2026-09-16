@@ -1,6 +1,6 @@
 import React from 'react';
-import { PuzzlePiece } from '../types';
-import { JIGSAW_GEOMETRY, BOARD_WIDTH, BOARD_HEIGHT } from '../utils/jigsaw';
+import { PuzzlePiece, PuzzlePieceCount } from '../types';
+import { getGeometryForCount, BOARD_WIDTH, BOARD_HEIGHT } from '../utils/jigsaw';
 
 interface JigsawCanvasProps {
   pieces: PuzzlePiece[];
@@ -25,6 +25,9 @@ export const JigsawCanvas: React.FC<JigsawCanvasProps> = ({
   hoveredSlotId = null,
   hintSlotId = null,
 }) => {
+  const pieceCount = (pieces.length as PuzzlePieceCount) || 8;
+  const geometries = getGeometryForCount(pieceCount);
+
   return (
     <div
       className={`relative aspect-[3/2] w-full rounded-2xl overflow-hidden shadow-xl border-2 border-[#3a1d08] bg-[#1a0c03] ${className}`}
@@ -34,7 +37,7 @@ export const JigsawCanvas: React.FC<JigsawCanvasProps> = ({
         className="w-full h-full block"
       >
         <defs>
-          {JIGSAW_GEOMETRY.map((geom) => (
+          {geometries.map((geom) => (
             <clipPath key={geom.id} id={`canvas-clip-${geom.id}`}>
               <path d={geom.pathData} />
             </clipPath>
@@ -52,7 +55,7 @@ export const JigsawCanvas: React.FC<JigsawCanvasProps> = ({
         </defs>
 
         {/* 1. Empty Slots / Cavities */}
-        {JIGSAW_GEOMETRY.map((geom) => {
+        {geometries.map((geom) => {
           const piece = pieces.find((p) => p.id === geom.id);
           if (piece?.isPlaced) return null;
 
@@ -111,7 +114,7 @@ export const JigsawCanvas: React.FC<JigsawCanvasProps> = ({
         })}
 
         {/* 2. Placed Pieces - Unified & Continuous */}
-        {JIGSAW_GEOMETRY.map((geom) => {
+        {geometries.map((geom) => {
           const piece = pieces.find((p) => p.id === geom.id);
           if (!piece?.isPlaced) return null;
 

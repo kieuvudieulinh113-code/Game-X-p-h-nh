@@ -4,9 +4,11 @@ import {
   MysteryImage,
   Question,
   GradeLevel,
+  PuzzlePieceCount,
 } from '../types';
 import { extractTextFromFile, parseQuestionsFromText } from '../utils/fileParser';
 import { compressAndResizeImage } from '../utils/imageSlice';
+import { PIECE_CONFIGS } from '../utils/jigsaw';
 import { soundManager } from '../utils/audio';
 import {
   YouTubeMusicConfig,
@@ -43,6 +45,8 @@ import {
   ExternalLink,
   RotateCcw,
   Link2,
+  Puzzle,
+  LayoutGrid,
 } from 'lucide-react';
 
 interface TeacherPanelProps {
@@ -52,6 +56,7 @@ interface TeacherPanelProps {
   currentImageId: string;
   answerTimeLimit: number;
   motionDuration?: number;
+  puzzlePieceCount?: PuzzlePieceCount;
   initialTab?: 'questions' | 'images' | 'settings';
   onSelectQuestionBank: (bankId: string) => void;
   onSaveQuestionBank: (bank: QuestionBank) => void;
@@ -61,6 +66,7 @@ interface TeacherPanelProps {
   onDeleteMysteryImage: (imageId: string) => void;
   onUpdateAnswerTimeLimit: (seconds: number) => void;
   onUpdateMotionDuration?: (seconds: number) => void;
+  onUpdatePieceCount?: (count: PuzzlePieceCount) => void;
   onResetGame?: () => void;
   onClose: () => void;
 }
@@ -72,6 +78,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   currentImageId,
   answerTimeLimit,
   motionDuration = 10,
+  puzzlePieceCount = 8,
   initialTab = 'questions',
   onSelectQuestionBank,
   onSaveQuestionBank,
@@ -81,6 +88,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   onDeleteMysteryImage,
   onUpdateAnswerTimeLimit,
   onUpdateMotionDuration,
+  onUpdatePieceCount,
   onResetGame,
   onClose,
 }) => {
@@ -959,7 +967,146 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
           {/* TAB 3: GAME SETTINGS */}
           {activeTab === 'settings' && (
             <div className="max-w-2xl mx-auto space-y-6 py-2">
-              {/* SECTION 1: QUESTION ANSWER COUNTDOWN TIME */}
+              {/* SECTION 1: PUZZLE PIECE COUNT SELECTION (4, 6, 8, 9 MẢNH GHÉP) */}
+              <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-5 shadow-sm">
+                <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center font-bold shadow-md shadow-amber-200">
+                      <Puzzle className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                        <span>Chế độ số lượng mảnh ghép tranh bí ẩn</span>
+                        <span className="text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 font-black border border-amber-300">
+                          {puzzlePieceCount} MẢNH ({PIECE_CONFIGS[puzzlePieceCount]?.cols}×{PIECE_CONFIGS[puzzlePieceCount]?.rows})
+                        </span>
+                      </h3>
+                      <p className="text-xs text-slate-500 mt-0.5">
+                        Tùy chỉnh độ dài và độ khó của trận đấu phù hợp với thời lượng tiết học và độ tuổi học sinh.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 4 Cards: 4, 6, 8, 9 pieces */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {(
+                    [
+                      {
+                        count: 4 as PuzzlePieceCount,
+                        cols: 2,
+                        rows: 2,
+                        badge: 'SIÊU TỐC',
+                        badgeColor: 'bg-emerald-100 text-emerald-700 border-emerald-300',
+                        title: '4 Mảnh ghép (2 × 2)',
+                        desc: 'Ván chơi diễn ra cực nhanh, 4 lượt thi. Thích hợp khởi động đầu giờ hoặc học sinh lớp 1, 2.',
+                      },
+                      {
+                        count: 6 as PuzzlePieceCount,
+                        cols: 3,
+                        rows: 2,
+                        badge: 'VỪA PHẢI',
+                        badgeColor: 'bg-blue-100 text-blue-700 border-blue-300',
+                        title: '6 Mảnh ghép (3 × 2)',
+                        desc: 'Thời lượng trung bình (6 lượt thi). Cân bằng giữa vận động và thời gian trả lời câu hỏi.',
+                      },
+                      {
+                        count: 8 as PuzzlePieceCount,
+                        cols: 4,
+                        rows: 2,
+                        badge: 'TIÊU CHUẨN',
+                        badgeColor: 'bg-indigo-100 text-indigo-700 border-indigo-300',
+                        title: '8 Mảnh ghép (4 × 2)',
+                        desc: 'Chế độ chuẩn (8 lượt thi). Tối ưu cho 2 đội luân phiên so tài và mở dần từng phần bức tranh.',
+                      },
+                      {
+                        count: 9 as PuzzlePieceCount,
+                        cols: 3,
+                        rows: 3,
+                        badge: 'THỬ THÁCH',
+                        badgeColor: 'bg-purple-100 text-purple-700 border-purple-300',
+                        title: '9 Mảnh ghép (3 × 3)',
+                        desc: 'Lưới ghép tranh 3x3 truyền thống, có mảnh trung tâm đặc biệt. Thích hợp thi đấu sâu sắc.',
+                      },
+                    ] as const
+                  ).map((option) => {
+                    const isSelected = puzzlePieceCount === option.count;
+                    return (
+                      <button
+                        key={option.count}
+                        type="button"
+                        id={`btn-select-pieces-${option.count}`}
+                        onClick={() => {
+                          if (onUpdatePieceCount) {
+                            onUpdatePieceCount(option.count);
+                          }
+                          soundManager.playClick();
+                        }}
+                        className={`p-4 rounded-2xl text-left border-2 transition-all cursor-pointer relative overflow-hidden flex flex-col justify-between ${
+                          isSelected
+                            ? 'bg-amber-50/70 border-amber-500 shadow-md ring-2 ring-amber-300 text-slate-900'
+                            : 'bg-white border-slate-200 text-slate-700 hover:border-amber-300 hover:bg-slate-50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${option.badgeColor}`}>
+                              {option.badge}
+                            </span>
+                            <span className="text-xs font-mono font-bold text-slate-400">
+                              {option.cols}×{option.rows}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <span className="flex items-center gap-1 text-xs font-black text-amber-700 bg-amber-200/80 px-2 py-0.5 rounded-full">
+                              <CheckCircle2 className="w-3.5 h-3.5 text-amber-600" />
+                              <span>ĐANG CHỌN</span>
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-3 my-1">
+                          {/* Visual Grid Mini Layout */}
+                          <div
+                            className={`w-14 h-10 rounded-lg p-1 border grid gap-0.5 flex-shrink-0 ${
+                              isSelected ? 'bg-amber-100/80 border-amber-300' : 'bg-slate-100 border-slate-300'
+                            }`}
+                            style={{
+                              gridTemplateColumns: `repeat(${option.cols}, minmax(0, 1fr))`,
+                              gridTemplateRows: `repeat(${option.rows}, minmax(0, 1fr))`,
+                            }}
+                          >
+                            {Array.from({ length: option.count }).map((_, idx) => (
+                              <div
+                                key={idx}
+                                className={`rounded-[2px] transition-colors ${
+                                  isSelected ? 'bg-amber-500/80' : 'bg-slate-300'
+                                }`}
+                              />
+                            ))}
+                          </div>
+
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{option.title}</p>
+                            <p className="text-[11px] text-slate-500 line-clamp-2 mt-0.5 leading-snug">
+                              {option.desc}
+                            </p>
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="p-3 bg-amber-50/50 rounded-xl border border-amber-200 text-xs text-amber-800 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                  <span>
+                    Bức tranh bí ẩn sẽ được chia khớp nối xếp hình răng cưa theo đúng tỉ lệ số mảnh bạn chọn.
+                  </span>
+                </div>
+              </div>
+
+              {/* SECTION 2: QUESTION ANSWER COUNTDOWN TIME */}
               <div className="bg-slate-50 p-5 sm:p-6 rounded-3xl border border-slate-200 space-y-5 shadow-sm">
                 <div className="flex items-start justify-between gap-3 border-b border-slate-200 pb-4">
                   <div className="flex items-center gap-3">
@@ -1465,7 +1612,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                         Quản lý trận đấu (Chơi lại ván mới):
                       </span>
                       <p className="text-xs text-rose-600">
-                        Đặt lại toàn bộ tiến độ: Lượt 1, úp lại 8 mảnh tranh bí ẩn và đưa điểm 2 đội về 0.
+                        Đặt lại toàn bộ tiến độ: Lượt 1, úp lại {puzzlePieceCount} mảnh tranh bí ẩn và đưa điểm 2 đội về 0.
                       </p>
                     </div>
                     <button
@@ -1491,7 +1638,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                 <ul className="text-xs text-slate-600 space-y-1 list-disc pl-4">
                   <li>Vận động {motionDuration} giây qua camera: Bụng, đầu, tay, chân di chuyển sẽ được nhận diện và cộng điểm năng lượng liên tục.</li>
                   <li>Đội có điểm năng lượng cao hơn sẽ giành quyền trả lời câu hỏi trong số giây đã cài đặt bên trên.</li>
-                  <li>Trả lời đúng được lật mở 1 mảnh tranh bí ẩn. Đội ghép đúng mảnh thứ 8 (mảnh cuối) sẽ là Đội Quán Quân!</li>
+                  <li>Trả lời đúng được lật mở 1 mảnh tranh bí ẩn. Đội ghép đúng mảnh thứ {puzzlePieceCount} (mảnh cuối) sẽ là Đội Quán Quân!</li>
                 </ul>
               </div>
             </div>

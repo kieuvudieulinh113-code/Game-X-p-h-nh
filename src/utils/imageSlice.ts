@@ -1,4 +1,4 @@
-import { PuzzlePiece } from '../types';
+import { PuzzlePiece, PuzzlePieceCount } from '../types';
 import {
   BOARD_WIDTH,
   BOARD_HEIGHT,
@@ -6,17 +6,22 @@ import {
   JIGSAW_ROWS,
   JIGSAW_GEOMETRY,
   JIGSAW_TOTAL,
+  getGeometryForCount,
 } from './jigsaw';
 
 export const COLS = JIGSAW_COLS;
 export const ROWS = JIGSAW_ROWS;
-export const TOTAL_PIECES = JIGSAW_TOTAL; // Exactly 9 pieces
+export const TOTAL_PIECES = JIGSAW_TOTAL; // Default 8 pieces
 
 /**
- * Slices an image data URL into 9 interlocking jigsaw pieces
+ * Slices an image data URL into interlocking jigsaw pieces (4, 6, 8, or 9 pieces)
  */
-export async function sliceImageIntoPieces(imageSrc: string): Promise<PuzzlePiece[]> {
+export async function sliceImageIntoPieces(
+  imageSrc: string,
+  pieceCount: PuzzlePieceCount = 8
+): Promise<PuzzlePiece[]> {
   return new Promise((resolve, reject) => {
+    const geometries = getGeometryForCount(pieceCount);
     const img = new Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
@@ -33,7 +38,7 @@ export async function sliceImageIntoPieces(imageSrc: string): Promise<PuzzlePiec
         // Draw image covering full canvas nicely
         fullCtx.drawImage(img, 0, 0, BOARD_WIDTH, BOARD_HEIGHT);
 
-        JIGSAW_GEOMETRY.forEach((geom) => {
+        geometries.forEach((geom) => {
           const pieceCanvas = document.createElement('canvas');
           pieceCanvas.width = geom.width;
           pieceCanvas.height = geom.height;

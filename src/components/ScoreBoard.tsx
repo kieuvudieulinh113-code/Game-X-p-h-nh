@@ -18,6 +18,7 @@ interface ScoreBoardProps {
   currentRound: number;
   phase: GamePhase;
   activeTeamId?: 'teamA' | 'teamB' | null;
+  totalPieces?: number;
   onUpdateTeamName: (teamId: 'teamA' | 'teamB', newName: string) => void;
   onResetGame?: () => void;
 }
@@ -26,6 +27,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   teams,
   currentRound,
   activeTeamId,
+  totalPieces = TOTAL_PIECES,
   onUpdateTeamName,
   onResetGame,
 }) => {
@@ -150,7 +152,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
               <span>Mảnh ghép</span>
             </div>
             <div className="text-lg sm:text-xl font-mono font-black text-white">
-              {team.piecesCollected} <span className="text-xs font-normal text-slate-500">/ {TOTAL_PIECES}</span>
+              {team.piecesCollected} <span className="text-xs font-normal text-slate-500">/ {totalPieces}</span>
             </div>
           </div>
 
@@ -177,7 +179,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           </div>
         </div>
 
-        {/* Progress mini bar for TOTAL_PIECES */}
+        {/* Progress mini bar for totalPieces */}
         <div className="mt-3">
           <div className="w-full bg-slate-950 h-2 rounded-full overflow-hidden flex border border-slate-800">
             <div
@@ -186,7 +188,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
                   ? 'bg-gradient-to-r from-cyan-500 to-blue-500 shadow-[0_0_8px_#06b6d4]'
                   : 'bg-gradient-to-r from-rose-500 to-pink-500 shadow-[0_0_8px_#f43f5e]'
               }`}
-              style={{ width: `${(team.piecesCollected / TOTAL_PIECES) * 100}%` }}
+              style={{ width: `${Math.min(100, (team.piecesCollected / totalPieces) * 100)}%` }}
             />
           </div>
         </div>

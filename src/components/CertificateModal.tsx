@@ -8,6 +8,7 @@ interface CertificateModalProps {
   winningTeam: Team;
   mysteryImage: MysteryImage;
   dateStr: string;
+  totalPieces?: number;
   onClose: () => void;
 }
 
@@ -15,6 +16,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
   winningTeam,
   mysteryImage,
   dateStr,
+  totalPieces = TOTAL_PIECES,
   onClose,
 }) => {
   const certRef = useRef<HTMLDivElement | null>(null);
@@ -98,7 +100,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
     ctx.fillStyle = '#92400e';
     ctx.font = 'bold 20px sans-serif';
     ctx.fillText(
-      `★ Mảnh ghép: ${winningTeam.piecesCollected}/${TOTAL_PIECES}    ★ Điểm vận động: ${winningTeam.motionScoreTotal}    ★ Câu đúng: ${winningTeam.correctAnswersCount}`,
+      `★ Mảnh ghép: ${winningTeam.piecesCollected}/${totalPieces}    ★ Điểm vận động: ${winningTeam.motionScoreTotal}    ★ Câu đúng: ${winningTeam.correctAnswersCount}`,
       600,
       535
     );
@@ -195,7 +197,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             </div>
 
             <p className="text-xs sm:text-sm text-slate-700 max-w-lg mx-auto leading-relaxed mb-4">
-              Đã xuất sắc hoàn thành xuất sắc các lượt vận động thể chất, trả lời đúng các câu hỏi trắc nghiệm Tin học và ghép hoàn chỉnh mảnh thứ 8 của bức tranh bí ẩn:{' '}
+              Đã xuất sắc hoàn thành xuất sắc các lượt vận động thể chất, trả lời đúng các câu hỏi trắc nghiệm Tin học và ghép hoàn chỉnh toàn bộ {totalPieces} mảnh của bức tranh bí ẩn:{' '}
               <strong className="text-slate-900">"{mysteryImage.title}"</strong>.
             </p>
 
@@ -203,7 +205,7 @@ export const CertificateModal: React.FC<CertificateModalProps> = ({
             <div className="grid grid-cols-3 gap-2 bg-white/90 p-3 rounded-xl border border-amber-300 max-w-md mx-auto mb-6 text-xs">
               <div>
                 <span className="text-slate-500 block">Số mảnh ghép</span>
-                <strong className="text-amber-800 text-sm">{winningTeam.piecesCollected} / {TOTAL_PIECES}</strong>
+                <strong className="text-amber-800 text-sm">{winningTeam.piecesCollected} / {totalPieces}</strong>
               </div>
               <div>
                 <span className="text-slate-500 block">Điểm vận động</span>
