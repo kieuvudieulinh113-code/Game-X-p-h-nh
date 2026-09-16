@@ -61,6 +61,7 @@ interface TeacherPanelProps {
   onDeleteMysteryImage: (imageId: string) => void;
   onUpdateAnswerTimeLimit: (seconds: number) => void;
   onUpdateMotionDuration?: (seconds: number) => void;
+  onResetGame?: () => void;
   onClose: () => void;
 }
 
@@ -80,6 +81,7 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
   onDeleteMysteryImage,
   onUpdateAnswerTimeLimit,
   onUpdateMotionDuration,
+  onResetGame,
   onClose,
 }) => {
   const [activeTab, setActiveTab] = useState<'questions' | 'images' | 'settings'>(initialTab);
@@ -1454,7 +1456,34 @@ export const TeacherPanel: React.FC<TeacherPanelProps> = ({
                 </div>
               </div>
 
-              {/* SECTION 3: RULES SUMMARY */}
+              {/* SECTION 3: GAME MATCH MANAGEMENT (RESET GAME) */}
+              {onResetGame && (
+                <div className="bg-rose-50 p-4 rounded-2xl border border-rose-200">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <span className="text-xs font-extrabold uppercase tracking-wider text-rose-700 block mb-0.5">
+                        Quản lý trận đấu (Chơi lại ván mới):
+                      </span>
+                      <p className="text-xs text-rose-600">
+                        Đặt lại toàn bộ tiến độ: Lượt 1, úp lại 8 mảnh tranh bí ẩn và đưa điểm 2 đội về 0.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onResetGame();
+                        onClose();
+                      }}
+                      className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-extrabold text-xs sm:text-sm flex items-center gap-2 shadow-md hover:shadow-lg transition-all cursor-pointer"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                      <span>LÀM MỚI VÁN CHƠI NGAY</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 4: RULES SUMMARY */}
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
                 <span className="text-xs font-extrabold uppercase tracking-wider text-slate-500 block mb-1.5">
                   Quy tắc tính điểm &amp; Chiến thắng:

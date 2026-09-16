@@ -41,6 +41,7 @@ interface MotionPhaseProps {
   retryNotice?: string | null;
   onClearRetryNotice?: () => void;
   onUpdateMotionDuration?: (seconds: number) => void;
+  onResetGame?: () => void;
 }
 
 const defaultZones: BodyZonesMotion = {
@@ -61,6 +62,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
   retryNotice: externalRetryNotice,
   onClearRetryNotice,
   onUpdateMotionDuration,
+  onResetGame,
 }) => {
   const [isRunning, setIsRunning] = useState(false);
   const [hasStarted, setHasStarted] = useState(false);
@@ -74,6 +76,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
 
   // Manual referee mode
   const [isManualMode, setIsManualMode] = useState(false);
+  const isFinishingRef = useRef(false);
 
   // Motion scores accumulated
   const [teamAScore, setTeamAScore] = useState(0);
@@ -489,6 +492,8 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
 
   // Finish evaluation when motion seconds expire
   const handleFinishCountdown = useCallback(() => {
+    if (isFinishingRef.current) return;
+    isFinishingRef.current = true;
     setIsRunning(false);
     soundManager.playCorrect();
 
@@ -534,6 +539,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
 
   // Universal reset & start function with 3-2-1 sequence and guaranteed timer countdown
   const launchRoundCountdown = useCallback(() => {
+    isFinishingRef.current = false;
     setLocalRetryNotice(null);
     if (onClearRetryNotice) onClearRetryNotice();
 
@@ -671,7 +677,7 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
         setTimeout(() => setAudioWaveActive(false), 120);
       }
 
-      if (count >= 10) clearInterval(interval);
+      if (count >= motionDuration) clearInterval(interval);
     }, 1000);
   };
 
@@ -700,16 +706,27 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
         {/* Header Controls: Motion Duration Selector + YouTube Music Toggle + Motion Sound Toggle + Compact Tech Timer */}
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {/* Quick Motion Duration Picker on Arena */}
-          <div className="flex items-center gap-1.5 bg-slate-900/90 px-2.5 py-1.5 rounded-xl sm:rounded-2xl border border-slate-700">
+          <div className="flex items-center gap-1.5 bg-slate-900/90 px-2 sm:px-2.5 py-1.5 rounded-xl sm:rounded-2xl border border-slate-700">
             <Timer className="w-3.5 h-3.5 text-cyan-400" />
             <span className="text-[11px] font-mono font-bold text-slate-300 hidden sm:inline">
               Thời gian:
             </span>
-            <span className="text-xs font-mono font-black text-cyan-300">
+            <span className="text-xs font-mono font-black text-cyan-300 px-1.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-500/30">
               {motionDuration}s
             </span>
-            <div className="flex items-center gap-0.5 ml-1">
-              {[5, 10, 15, 20, 30].map((sec) => (
+            <div className="flex items-center gap-0.5">
+              <button
+                onClick={() => {
+                  if (onUpdateMotionDuration) onUpdateMotionDuration(Math.max(3, motionDuration - 5));
+                  soundManager.playClick();
+                }}
+                disabled={isRunning}
+                className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                title="Giảm 5 giây"
+              >
+                -5s
+              </button>
+              {[5, 10, 15, 20, 30, 45, 60].map((sec) => (
                 <button
                   key={sec}
                   onClick={() => {
@@ -721,12 +738,23 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
                     motionDuration === sec
                       ? 'bg-cyan-500 text-slate-950 font-black shadow-sm'
                       : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                  } ${isRunning ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                  } ${isRunning ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
                   title={`Đổi thời gian vận động thành ${sec} giây`}
                 >
                   {sec}s
                 </button>
               ))}
+              <button
+                onClick={() => {
+                  if (onUpdateMotionDuration) onUpdateMotionDuration(Math.min(120, motionDuration + 5));
+                  soundManager.playClick();
+                }}
+                disabled={isRunning}
+                className="px-1.5 py-0.5 rounded text-[10px] font-mono font-bold text-slate-400 hover:text-white hover:bg-slate-800 disabled:opacity-40 cursor-pointer"
+                title="Tăng 5 giây"
+              >
+                +5s
+              </button>
             </div>
           </div>
 
@@ -779,8 +807,8 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
           </button>
 
           <TechCountdown
-            key={`header-timer-${attemptId}`}
-            resetKey={attemptId}
+            key={`header-timer-${attemptId}-${motionDuration}`}
+            resetKey={`${attemptId}-${motionDuration}`}
             totalSeconds={motionDuration}
             isRunning={isRunning}
             onComplete={handleFinishCountdown}
@@ -829,14 +857,15 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
           {hasStarted && (
             <div className="absolute top-3 sm:top-5 left-1/2 transform -translate-x-1/2 z-30 pointer-events-none">
               <TechCountdown
-                key={`center-timer-${attemptId}`}
-                resetKey={attemptId}
-                totalSeconds={10}
+                key={`center-timer-${attemptId}-${motionDuration}`}
+                resetKey={`${attemptId}-${motionDuration}`}
+                totalSeconds={motionDuration}
                 isRunning={isRunning}
                 onComplete={handleFinishCountdown}
                 variant="hud-circular"
                 label="THỜI GIAN"
                 size="lg"
+                disableTicks={true}
               />
             </div>
           )}
@@ -1210,6 +1239,17 @@ export const MotionPhase: React.FC<MotionPhaseProps> = ({
             <SlidersHorizontal className="w-4 h-4" />
             <span>{isManualMode ? 'Đang bật trọng tài thủ công' : 'Chế độ trọng tài thủ công'}</span>
           </button>
+
+          {onResetGame && (
+            <button
+              onClick={onResetGame}
+              title="Làm mới lại trận đấu - Chơi ván mới"
+              className="px-3.5 py-2 rounded-xl border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4 text-rose-400" />
+              <span>Chơi ván mới</span>
+            </button>
+          )}
         </div>
 
         {/* Finish early button for teacher */}

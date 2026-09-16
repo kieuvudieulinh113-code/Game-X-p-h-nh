@@ -10,6 +10,7 @@ import {
   UserCheck,
   Cpu,
   Flame,
+  RotateCcw,
 } from 'lucide-react';
 
 interface ScoreBoardProps {
@@ -18,6 +19,7 @@ interface ScoreBoardProps {
   phase: GamePhase;
   activeTeamId?: 'teamA' | 'teamB' | null;
   onUpdateTeamName: (teamId: 'teamA' | 'teamB', newName: string) => void;
+  onResetGame?: () => void;
 }
 
 export const ScoreBoard: React.FC<ScoreBoardProps> = ({
@@ -25,6 +27,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
   currentRound,
   activeTeamId,
   onUpdateTeamName,
+  onResetGame,
 }) => {
   const [editingTeamA, setEditingTeamA] = useState(false);
   const [editingTeamB, setEditingTeamB] = useState(false);
@@ -205,7 +208,7 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
         )}
 
         {/* Round Center Pill */}
-        <div className="flex sm:flex-col items-center justify-center bg-slate-900/90 border border-cyan-500/30 text-white px-4 py-2 sm:py-3 rounded-2xl shadow-lg text-center flex-shrink-0">
+        <div className="flex sm:flex-col items-center justify-center bg-slate-900/90 border border-cyan-500/30 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-2xl shadow-lg text-center flex-shrink-0">
           <span className="text-[10px] font-mono uppercase tracking-widest text-cyan-400">
             LƯỢT THI
           </span>
@@ -215,6 +218,18 @@ export const ScoreBoard: React.FC<ScoreBoardProps> = ({
           <span className="text-[10px] font-mono text-slate-400 hidden sm:block">
             Mục tiêu: 8 mảnh
           </span>
+
+          {onResetGame && (
+            <button
+              id="btn-scoreboard-reset"
+              onClick={onResetGame}
+              title="Làm mới ván chơi - Đặt lại điểm số và chơi lại từ Lượt 1"
+              className="mt-1.5 px-2 py-1 bg-rose-950/40 hover:bg-rose-900/70 border border-rose-500/40 text-[10px] font-mono font-bold text-rose-300 hover:text-white rounded-lg flex items-center gap-1 transition-all cursor-pointer shadow-sm"
+            >
+              <RotateCcw className="w-3 h-3 text-rose-400" />
+              <span>Chơi lại</span>
+            </button>
+          )}
         </div>
 
         {renderTeamCard(

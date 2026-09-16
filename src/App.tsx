@@ -19,6 +19,7 @@ import { PuzzleBoard } from './components/PuzzleBoard';
 import { VictoryModal } from './components/VictoryModal';
 import { TeacherPanel } from './components/TeacherPanel';
 import { QuestionBankSelectorModal } from './components/QuestionBankSelectorModal';
+import { ResetConfirmModal } from './components/ResetConfirmModal';
 import { JigsawCanvas } from './components/JigsawCanvas';
 import {
   Play,
@@ -110,6 +111,7 @@ export default function App() {
   const [isTeacherPanelOpen, setIsTeacherPanelOpen] = useState(false);
   const [teacherPanelInitialTab, setTeacherPanelInitialTab] = useState<'questions' | 'images' | 'settings'>('questions');
   const [isBankSelectorOpen, setIsBankSelectorOpen] = useState(false);
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
   const [motionRetryNotice, setMotionRetryNotice] = useState<string | null>(null);
   const [roundNotification, setRoundNotification] = useState<string | null>(null);
 
@@ -166,24 +168,56 @@ export default function App() {
     }
   }, [activeImage, initPuzzlePieces]);
 
-  // Reset entire game match
-  const handleResetGame = () => {
+  // Reset entire game match: Open confirmation modal
+  const handleRequestResetGame = () => {
     soundManager.playClick();
-    if (window.confirm('Bạn có chắc chắn muốn làm mới ván chơi này? Tiến độ ghép tranh sẽ được đặt lại từ đầu.')) {
-      setPhase('ready');
-      setCurrentRound(1);
-      setUsedQuestionIds([]);
-      setActiveMotionWinner(null);
-      setCurrentQuestion(null);
-      setMotionRetryNotice(null);
-      setRoundNotification(null);
-      setTeams((prev) => [
-        { ...prev[0], score: 0, piecesCollected: 0, motionScoreTotal: 0, correctAnswersCount: 0 },
-        { ...prev[1], score: 0, piecesCollected: 0, motionScoreTotal: 0, correctAnswersCount: 0 },
-      ]);
-      if (activeImage) {
-        initPuzzlePieces(activeImage.dataUrl);
-      }
+    setIsResetModalOpen(true);
+  };
+
+  // Perform full game reset upon confirmation
+  const handlePerformResetGame = (options?: { randomizeImage?: boolean; resetTeamNames?: boolean }) => {
+    setPhase('ready');
+    setCurrentRound(1);
+    setUsedQuestionIds([]);
+    setActiveMotionWinner(null);
+    setCurrentQuestion(null);
+    setMotionRetryNotice(null);
+    setRoundNotification('Đã làm mới ván đấu thành công! Chúc hai đội thi đấu xuất sắc.');
+    setTimeout(() => setRoundNotification(null), 4000);
+
+    let targetImage = activeImage;
+    if (options?.randomizeImage && mysteryImages.length > 1) {
+      const candidates = mysteryImages.filter((img) => img.id !== currentImageId);
+      const chosen = candidates[Math.floor(Math.random() * candidates.length)] || mysteryImages[0];
+      setCurrentImageId(chosen.id);
+      targetImage = chosen;
+    }
+
+    setTeams((prev) => {
+      const resetTeams: [Team, Team] = [
+        {
+          ...prev[0],
+          name: options?.resetTeamNames ? INITIAL_TEAMS[0].name : prev[0].name,
+          score: 0,
+          piecesCollected: 0,
+          motionScoreTotal: 0,
+          correctAnswersCount: 0,
+        },
+        {
+          ...prev[1],
+          name: options?.resetTeamNames ? INITIAL_TEAMS[1].name : prev[1].name,
+          score: 0,
+          piecesCollected: 0,
+          motionScoreTotal: 0,
+          correctAnswersCount: 0,
+        },
+      ];
+      localStorage.setItem('cpmg_teams', JSON.stringify(resetTeams));
+      return resetTeams;
+    });
+
+    if (targetImage) {
+      initPuzzlePieces(targetImage.dataUrl);
     }
   };
 
@@ -358,8 +392,8 @@ export default function App() {
         grade={activeBank.grade}
         onOpenTeacherPanel={() => setIsTeacherPanelOpen(true)}
         onOpenBankSelector={() => setIsBankSelectorOpen(true)}
-        onResetGame={handleResetGame}
-        canReset={currentRound > 1 || pieces.some((p) => p.isPlaced)}
+        onResetGame={handleRequestResetGame}
+        canReset={true}
       />
 
       {/* Main Container */}
@@ -371,6 +405,7 @@ export default function App() {
           phase={phase}
           activeTeamId={activeMotionWinner}
           onUpdateTeamName={handleUpdateTeamName}
+          onResetGame={handleRequestResetGame}
         />
 
         {/* Dynamic Game Phase Section */}
@@ -537,18 +572,28 @@ export default function App() {
               </div>
             </div>
 
-            {/* Launch Button */}
-            <div className="pt-2">
+            {/* Launch Button & Reset Game */}
+            <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
               <button
                 id="btn-enter-motion"
                 onClick={() => {
                   soundManager.playCyberLaunch();
                   setPhase('motion');
                 }}
-                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-lg shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center gap-3 mx-auto transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
+                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-black text-lg shadow-[0_0_30px_rgba(6,182,212,0.5)] flex items-center gap-3 transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
               >
                 <Play className="w-6 h-6 fill-white" />
                 <span>BƯỚC VÀO VẬN ĐỘNG {motionDuration} GIÂY</span>
+              </button>
+
+              <button
+                id="btn-ready-reset-game"
+                onClick={handleRequestResetGame}
+                title="Đặt lại toàn bộ tiến độ và chơi lại từ Lượt 1"
+                className="px-5 py-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-400" />
+                <span>Làm lại ván mới</span>
               </button>
             </div>
           </div>
@@ -573,6 +618,7 @@ export default function App() {
               retryNotice={motionRetryNotice}
               onClearRetryNotice={() => setMotionRetryNotice(null)}
               onUpdateMotionDuration={(sec) => setMotionDuration(sec)}
+              onResetGame={handleRequestResetGame}
             />
           </div>
         )}
@@ -635,14 +681,26 @@ export default function App() {
               </div>
             </div>
 
-            <button
-              id="btn-next-round"
-              onClick={handleProceedToNextRound}
-              className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-base shadow-[0_0_25px_rgba(6,182,212,0.5)] flex items-center gap-2 mx-auto transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
-            >
-              <span>BẮT ĐẦU LƯỢT TIẾP THEO</span>
-              <ChevronRight className="w-5 h-5" />
-            </button>
+            <div className="flex flex-wrap items-center justify-center gap-3">
+              <button
+                id="btn-next-round"
+                onClick={handleProceedToNextRound}
+                className="px-8 py-4 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-extrabold text-base shadow-[0_0_25px_rgba(6,182,212,0.5)] flex items-center gap-2 transform hover:scale-105 transition-all border border-cyan-300/40 cursor-pointer"
+              >
+                <span>BẮT ĐẦU LƯỢT TIẾP THEO</span>
+                <ChevronRight className="w-5 h-5" />
+              </button>
+
+              <button
+                id="btn-roundend-reset-game"
+                onClick={handleRequestResetGame}
+                title="Đặt lại toàn bộ ván chơi và bắt đầu lại từ Lượt 1"
+                className="px-5 py-4 rounded-2xl border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/70 text-rose-300 hover:text-white font-bold text-sm flex items-center gap-2 transition-all cursor-pointer shadow-lg hover:shadow-[0_0_20px_rgba(244,63,94,0.3)]"
+              >
+                <RotateCcw className="w-4 h-4 text-rose-400" />
+                <span>Chơi lại ván mới</span>
+              </button>
+            </div>
           </div>
         )}
 
@@ -653,19 +711,7 @@ export default function App() {
             teams={teams}
             mysteryImage={activeImage}
             onPlayAgain={() => {
-              setPhase('ready');
-              setCurrentRound(1);
-              setUsedQuestionIds([]);
-              setActiveMotionWinner(null);
-              setCurrentQuestion(null);
-              setRoundNotification(null);
-              setTeams((prev) => [
-                { ...prev[0], score: 0, piecesCollected: 0, motionScoreTotal: 0, correctAnswersCount: 0 },
-                { ...prev[1], score: 0, piecesCollected: 0, motionScoreTotal: 0, correctAnswersCount: 0 },
-              ]);
-              if (activeImage) {
-                initPuzzlePieces(activeImage.dataUrl);
-              }
+              handlePerformResetGame({ randomizeImage: false, resetTeamNames: false });
             }}
             onChangeImageAndBank={() => {
               setIsTeacherPanelOpen(true);
@@ -716,6 +762,7 @@ export default function App() {
           }}
           onUpdateAnswerTimeLimit={(sec) => setAnswerTimeLimit(sec)}
           onUpdateMotionDuration={(sec) => setMotionDuration(sec)}
+          onResetGame={handleRequestResetGame}
           initialTab={teacherPanelInitialTab}
           onClose={() => setIsTeacherPanelOpen(false)}
         />
@@ -732,6 +779,16 @@ export default function App() {
           onClose={() => setIsBankSelectorOpen(false)}
         />
       )}
+
+      {/* Reset Game Confirmation Modal */}
+      <ResetConfirmModal
+        isOpen={isResetModalOpen}
+        currentRound={currentRound}
+        placedPiecesCount={pieces.filter((p) => p.isPlaced).length}
+        totalPieces={TOTAL_PIECES}
+        onConfirm={handlePerformResetGame}
+        onClose={() => setIsResetModalOpen(false)}
+      />
 
       {/* Projector-friendly Classroom Footer */}
       <footer className="bg-slate-950/90 border-t border-cyan-500/20 py-3 px-4 text-center text-xs text-slate-400">

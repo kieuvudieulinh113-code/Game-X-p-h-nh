@@ -129,18 +129,16 @@ export const Header: React.FC<HeaderProps> = ({
             {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
           </button>
 
-          {/* Reset Game */}
-          {canReset && (
-            <button
-              id="btn-reset-game"
-              onClick={onResetGame}
-              title="Chơi ván mới"
-              className="px-3 py-2 rounded-xl border border-rose-500/40 bg-rose-950/40 hover:bg-rose-900/60 text-rose-300 font-bold text-xs sm:text-sm flex items-center gap-1.5 transition-all cursor-pointer"
-            >
-              <RotateCcw className="w-4 h-4" />
-              <span className="hidden md:inline">Ván mới</span>
-            </button>
-          )}
+          {/* Reset Game Button - Always accessible so teachers can restart anytime */}
+          <button
+            id="btn-reset-game"
+            onClick={onResetGame}
+            title="Làm mới trận đấu - Đặt lại điểm số và chơi lại từ Lượt 1"
+            className="px-3 py-2 rounded-xl border border-rose-500/40 bg-rose-950/60 hover:bg-rose-900/80 text-rose-200 hover:text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-[0_0_12px_rgba(244,63,94,0.25)] hover:shadow-[0_0_18px_rgba(244,63,94,0.4)] transition-all cursor-pointer"
+          >
+            <RotateCcw className="w-4 h-4 text-rose-400" />
+            <span>Chơi ván mới</span>
+          </button>
 
           {/* Teacher Settings Panel */}
           <button
